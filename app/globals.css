@@ -1,26 +1,262 @@
 @import "tailwindcss";
 
+/* ============================================
+   The Academic Atelier — Design System Tokens
+   ============================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand Colors */
+  --primary: #006c05;
+  --primary-container: #008809;
+  --on-primary: #ffffff;
+  --on-primary-container: #f8fff0;
+  --on-primary-fixed: #002200;
+  --on-primary-fixed-variant: #005303;
+  --primary-fixed: #81fd6f;
+  --primary-fixed-dim: #65e056;
+  --inverse-primary: #65e056;
+
+  /* Secondary */
+  --secondary: #5d5e63;
+  --secondary-container: #dfdfe4;
+  --on-secondary: #ffffff;
+  --on-secondary-container: #616267;
+  --on-secondary-fixed: #1a1c1f;
+  --on-secondary-fixed-variant: #45474b;
+  --secondary-fixed: #e2e2e7;
+  --secondary-fixed-dim: #c6c6cb;
+
+  /* Tertiary */
+  --tertiary: #006b32;
+  --tertiary-container: #008740;
+  --on-tertiary: #ffffff;
+  --on-tertiary-container: #f7fff3;
+  --on-tertiary-fixed: #00210b;
+  --on-tertiary-fixed-variant: #005225;
+  --tertiary-fixed: #78fc9c;
+  --tertiary-fixed-dim: #5adf82;
+
+  /* Surfaces — The "No-Line" Layering System */
+  --surface: #fbf9f8;
+  --surface-bright: #fbf9f8;
+  --surface-dim: #dbdad9;
+  --surface-container: #efeded;
+  --surface-container-low: #f5f3f3;
+  --surface-container-lowest: #ffffff;
+  --surface-container-high: #e9e8e7;
+  --surface-container-highest: #e3e2e2;
+  --surface-variant: #e3e2e2;
+  --surface-tint: #006e06;
+
+  /* On Surfaces */
+  --on-surface: #1b1c1c;
+  --on-surface-variant: #3e4a3a;
+  --on-background: #1b1c1c;
+  --background: #fbf9f8;
+
+  /* Inverse */
+  --inverse-surface: #303030;
+  --inverse-on-surface: #f2f0f0;
+
+  /* Outline */
+  --outline: #6e7b68;
+  --outline-variant: #bdcbb5;
+
+  /* Error */
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+  --on-error: #ffffff;
+  --on-error-container: #93000a;
 }
 
 @theme inline {
+  /* ---- Color Tokens ---- */
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary: var(--on-primary);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-on-primary-fixed: var(--on-primary-fixed);
+  --color-on-primary-fixed-variant: var(--on-primary-fixed-variant);
+  --color-primary-fixed: var(--primary-fixed);
+  --color-primary-fixed-dim: var(--primary-fixed-dim);
+  --color-inverse-primary: var(--inverse-primary);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-secondary: var(--on-secondary);
+  --color-on-secondary-container: var(--on-secondary-container);
+  --color-on-secondary-fixed: var(--on-secondary-fixed);
+  --color-on-secondary-fixed-variant: var(--on-secondary-fixed-variant);
+  --color-secondary-fixed: var(--secondary-fixed);
+  --color-secondary-fixed-dim: var(--secondary-fixed-dim);
+
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-container: var(--tertiary-container);
+  --color-on-tertiary: var(--on-tertiary);
+  --color-on-tertiary-container: var(--on-tertiary-container);
+  --color-on-tertiary-fixed: var(--on-tertiary-fixed);
+  --color-on-tertiary-fixed-variant: var(--on-tertiary-fixed-variant);
+  --color-tertiary-fixed: var(--tertiary-fixed);
+  --color-tertiary-fixed-dim: var(--tertiary-fixed-dim);
+
+  --color-surface: var(--surface);
+  --color-surface-bright: var(--surface-bright);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-surface-variant: var(--surface-variant);
+  --color-surface-tint: var(--surface-tint);
+
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-on-background: var(--on-background);
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-on-surface: var(--inverse-on-surface);
+
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+
+  --color-error: var(--error);
+  --color-error-container: var(--error-container);
+  --color-on-error: var(--on-error);
+  --color-on-error-container: var(--on-error-container);
+
+  /* ---- Font Families ---- */
+  --font-headline: "Plus Jakarta Sans", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Inter", sans-serif;
+
+  /* ---- Border Radius ---- */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-full: 9999px;
+
+  /* ---- Animations ---- */
+  --animate-fade-in: fade-in 0.4s ease-out both;
+  --animate-slide-up: slide-up 0.5s ease-out both;
+  --animate-scale-in: scale-in 0.3s ease-out both;
+  --animate-pulse-soft: pulse-soft 3s ease-in-out infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ---- Keyframe Animations ---- */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--surface);
+  color: var(--on-surface);
+  font-family: "Inter", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+h1, h2, h3, h4, h5, h6, .headline {
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+
+/* ---- Signature Gradient ---- */
+.bg-signature-gradient {
+  background: linear-gradient(135deg, #006c05 0%, #008809 100%);
+}
+
+/* ---- Glass Effect ---- */
+.glass {
+  background: rgba(251, 249, 248, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ---- Noise Texture Overlay ---- */
+.noise-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.02;
+  pointer-events: none;
+}
+
+/* ---- Ghost Border ---- */
+.ghost-border {
+  box-shadow: inset 0 0 0 1px rgba(189, 203, 181, 0.15);
+}
+
+/* ---- Material Symbols Config ---- */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* ---- Scrollbar Styling ---- */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--outline);
+}
+
+/* ---- Active Sidebar Indicator ---- */
+.sidebar-active {
+  position: relative;
+  background: var(--surface-container-low);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.sidebar-active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background: var(--primary);
+  border-radius: 999px;
+}
+
+/* ---- Stagger Animation Delays ---- */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }

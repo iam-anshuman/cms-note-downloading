@@ -1,406 +1,236 @@
+import Link from "next/link";
+import PublicNav from "./components/PublicNav";
+import PublicFooter from "./components/PublicFooter";
+
 export const metadata = {
-  title: "Dashboard — The Academy CMS",
-  description: "Overview of your academic content platform performance, revenue, and engagement metrics.",
+  title: "Architectural Academy | Premier Handwritten Notes",
+  description:
+    "Access meticulously crafted handwritten notes and comprehensive NCERT solutions designed by academic experts to transform your learning journey.",
 };
 
-export default function DashboardPage() {
+export default function HomePage() {
   return (
     <>
-      {/* Page Header */}
-      <header className="mb-10 animate-fade-in">
-        <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface">
-          Welcome back, Admin
-        </h2>
-        <p className="text-on-surface-variant font-medium mt-1 max-w-xl leading-relaxed">
-          Here&apos;s a real-time snapshot of your Veridian Scholar Panel
-          performance and activity.
-        </p>
-      </header>
-
-      {/* Metrics Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-        {/* Total Revenue Card */}
-        <div className="bg-surface-container-lowest p-6 rounded-xl ghost-border flex flex-col justify-between animate-slide-up stagger-1 hover:shadow-lg hover:shadow-stone-200/40 transition-shadow duration-300">
-          <div className="flex justify-between items-start">
-            <div className="p-3 bg-primary/10 rounded-lg text-primary">
-              <span className="material-symbols-outlined">
-                account_balance_wallet
-              </span>
-            </div>
-            <span className="text-xs font-bold text-primary flex items-center gap-1">
-              <span className="material-symbols-outlined text-xs">
-                trending_up
-              </span>{" "}
-              +12.5%
+      <PublicNav />
+      <main className="pt-20">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-surface py-20 lg:py-32 px-8">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+          <div className="z-10">
+            <span className="inline-block py-1 px-3 rounded-full bg-tertiary-container text-on-tertiary-container text-xs font-bold uppercase tracking-widest mb-6">
+              Premium Learning Resource
             </span>
-          </div>
-          <div className="mt-5">
-            <p className="text-sm font-semibold text-on-secondary-container">
-              Total Revenue
+            <h1 className="font-headline text-5xl lg:text-7xl font-extrabold text-on-surface leading-[1.1] tracking-tight mb-8">
+              Score 90+ with{" "}
+              <span className="text-primary italic">Topper&apos;s Notes</span>
+            </h1>
+            <p className="text-lg text-secondary mb-10 max-w-lg leading-relaxed">
+              Access meticulously crafted handwritten notes and comprehensive
+              NCERT solutions designed by academic experts to transform your
+              learning journey.
             </p>
-            <p className="text-2xl font-extrabold font-headline text-on-surface">
-              ₹ 4,82,950
-            </p>
-          </div>
-        </div>
-
-        {/* Customers Card */}
-        <div className="bg-surface-container-lowest p-6 rounded-xl ghost-border flex flex-col justify-between animate-slide-up stagger-2 hover:shadow-lg hover:shadow-stone-200/40 transition-shadow duration-300">
-          <div className="flex justify-between items-start">
-            <div className="p-3 bg-tertiary/10 rounded-lg text-tertiary">
-              <span className="material-symbols-outlined">group</span>
-            </div>
-            <span className="text-xs font-bold text-tertiary flex items-center gap-1">
-              <span className="material-symbols-outlined text-xs">
-                trending_up
-              </span>{" "}
-              +8.2%
-            </span>
-          </div>
-          <div className="mt-5">
-            <p className="text-sm font-semibold text-on-secondary-container">
-              Total Customers
-            </p>
-            <p className="text-2xl font-extrabold font-headline text-on-surface">
-              1,284
-            </p>
-          </div>
-        </div>
-
-        {/* Notes Uploaded Card */}
-        <div className="bg-surface-container-lowest p-6 rounded-xl ghost-border flex flex-col justify-between animate-slide-up stagger-3 hover:shadow-lg hover:shadow-stone-200/40 transition-shadow duration-300">
-          <div className="flex justify-between items-start">
-            <div className="p-3 bg-secondary-container rounded-lg text-on-secondary-fixed-variant">
-              <span className="material-symbols-outlined">history_edu</span>
-            </div>
-            <span className="text-xs font-bold text-stone-400">
-              Monthly Target: 80%
-            </span>
-          </div>
-          <div className="mt-5">
-            <p className="text-sm font-semibold text-on-secondary-container">
-              Notes Uploaded
-            </p>
-            <p className="text-2xl font-extrabold font-headline text-on-surface">
-              342
-            </p>
-          </div>
-        </div>
-
-        {/* Platform Efficiency Card */}
-        <div className="bg-signature-gradient p-6 rounded-xl shadow-lg shadow-primary/20 flex flex-col justify-between text-white animate-slide-up stagger-4 relative overflow-hidden">
-          <div className="flex justify-between items-start relative z-10">
-            <div className="p-3 bg-white/20 rounded-lg">
-              <span className="material-symbols-outlined">bolt</span>
-            </div>
-          </div>
-          <div className="mt-5 relative z-10">
-            <p className="text-sm font-medium opacity-80">
-              Platform Efficiency
-            </p>
-            <p className="text-2xl font-extrabold font-headline">98.4%</p>
-          </div>
-          <span className="material-symbols-outlined text-[96px] opacity-[0.08] absolute -right-3 -bottom-3 rotate-12">
-            bolt
-          </span>
-        </div>
-      </div>
-
-      {/* Main Content Grid: 2/3 + 1/3 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-        {/* Revenue Chart Placeholder */}
-        <section className="lg:col-span-2 animate-slide-up stagger-4">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-extrabold font-headline tracking-tight">
-              Revenue Overview
-            </h3>
-            <div className="flex items-center gap-2 bg-surface-container-low p-1 rounded-lg">
-              <button className="px-4 py-1.5 bg-surface-container-lowest text-primary font-semibold rounded-md text-xs shadow-sm">
-                Monthly
-              </button>
-              <button className="px-4 py-1.5 text-on-secondary-container font-medium text-xs hover:bg-surface-container-high rounded-md transition-all">
-                Weekly
-              </button>
-            </div>
-          </div>
-          <div className="bg-surface-container-lowest rounded-2xl p-8 ghost-border min-h-[280px] flex flex-col">
-            {/* Simulated Bar Chart */}
-            <div className="flex-1 flex items-end gap-3 pb-4">
-              {[65, 45, 80, 55, 90, 70, 85, 60, 95, 50, 75, 88].map(
-                (h, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                    <div
-                      className="w-full rounded-t-md transition-all duration-500 hover:opacity-80"
-                      style={{
-                        height: `${h * 2}px`,
-                        background:
-                          i === 8
-                            ? "linear-gradient(135deg, #006c05, #008809)"
-                            : i % 3 === 0
-                            ? "#e9e8e7"
-                            : "#f5f3f3",
-                      }}
-                    ></div>
-                    <span className="text-[10px] text-stone-400 font-medium">
-                      {
-                        [
-                          "Jan",
-                          "Feb",
-                          "Mar",
-                          "Apr",
-                          "May",
-                          "Jun",
-                          "Jul",
-                          "Aug",
-                          "Sep",
-                          "Oct",
-                          "Nov",
-                          "Dec",
-                        ][i]
-                      }
-                    </span>
-                  </div>
-                )
-              )}
-            </div>
-            {/* Chart Legend */}
-            <div className="flex items-center gap-6 pt-4 mt-2">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-sm bg-signature-gradient"></div>
-                <span className="text-xs text-on-surface-variant font-medium">
-                  Peak Month
+            <div className="relative group max-w-xl">
+              <div className="absolute inset-0 bg-primary/10 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity rounded-full"></div>
+              <div className="relative flex items-center bg-surface-container-lowest rounded-full p-2 shadow-sm ghost-border focus-within:shadow-md transition-all">
+                <span className="material-symbols-outlined ml-4 text-secondary">
+                  search
                 </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-sm bg-surface-container-high"></div>
-                <span className="text-xs text-on-surface-variant font-medium">
-                  Monthly Revenue
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Recent Activity */}
-        <section className="animate-slide-up stagger-5">
-          <h3 className="text-xl font-extrabold font-headline tracking-tight mb-6">
-            Recent Activity
-          </h3>
-          <div className="bg-surface-container-low rounded-2xl p-6 space-y-5">
-            {[
-              {
-                initials: "RK",
-                name: "Rajesh Kumar",
-                action: "Structural Systems",
-                time: "2 Mins Ago",
-                amount: "₹1,499",
-                bg: "bg-secondary-fixed",
-                textColor: "text-on-secondary-fixed",
-              },
-              {
-                initials: "AS",
-                name: "Ananya Singh",
-                action: "Landscape Ecology",
-                time: "18 Mins Ago",
-                amount: "₹899",
-                bg: "bg-primary-fixed-dim",
-                textColor: "text-on-primary-fixed",
-              },
-              {
-                initials: "PV",
-                name: "Priya Varma",
-                action: "Modernism in Concrete",
-                time: "1 Hour Ago",
-                amount: "₹2,199",
-                bg: "bg-tertiary-fixed-dim",
-                textColor: "text-on-tertiary-fixed",
-              },
-              {
-                initials: "MK",
-                name: "Manish Kapoor",
-                action: "Structural Systems",
-                time: "2 Hours Ago",
-                amount: "₹1,499",
-                bg: "bg-stone-200",
-                textColor: "text-on-surface",
-              },
-            ].map((purchase, i) => (
-              <div key={i} className="flex gap-4 items-start group">
-                <div
-                  className={`h-10 w-10 rounded-full ${purchase.bg} flex-shrink-0 flex items-center justify-center font-bold ${purchase.textColor} text-sm`}
+                <input
+                  className="w-full bg-transparent border-none focus:ring-0 px-4 py-3 font-body text-on-surface placeholder:text-outline outline-none"
+                  placeholder="Search notes and NCERT solutions..."
+                  type="text"
+                />
+                <Link
+                  href="/browse"
+                  className="bg-signature-gradient text-on-primary px-8 py-3 rounded-full font-bold hidden sm:block whitespace-nowrap"
                 >
-                  {purchase.initials}
+                  Search
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Hero Image Grid */}
+          <div className="relative">
+            <div className="absolute -top-12 -right-12 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
+            <div className="relative z-10 grid grid-cols-2 gap-4">
+              <div className="space-y-4 pt-12">
+                <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm rotate-[-2deg] hover:rotate-0 transition-transform duration-500">
+                  <img
+                    alt="Study Notes"
+                    className="rounded-lg w-full h-40 object-cover grayscale-[0.2] hover:grayscale-0 transition-all"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmE0xvEj_D5Mr3wuCtSPnWRERftEFKJmfT5v4ILhqUPgcCoZwQ8tSTg1aETUvNalVkITxVX86fAH90yd8knMSC0lyOsnYgUVSa8-NEbdXzeQL6deS_VQPqONExiteOHzwERybZcxh4xl644BwV8HdnTsrwRJQOlR7xPNIYNpqrt5sdgOXE27ppgJNoSkQJXA3Dv-c3xIgmtsR7huOougSeELPUGN7DQXX6R2AlrhR--AJQIX3_mELOMzXrUq57qbRSk4rnNEf4HDFB"
+                  />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold">{purchase.name}</p>
-                  <p className="text-xs text-on-secondary-container truncate">
-                    Purchased{" "}
-                    <span className="text-primary font-bold">
-                      {purchase.action}
-                    </span>
-                  </p>
-                  <p className="text-[10px] font-medium text-stone-400 mt-0.5 uppercase">
-                    {purchase.time}
-                  </p>
-                </div>
-                <div className="text-sm font-bold text-on-surface">
-                  {purchase.amount}
+                <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm rotate-[1deg] hover:rotate-0 transition-transform duration-500">
+                  <img
+                    alt="Academic Archive"
+                    className="rounded-lg w-full h-48 object-cover"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvxlvDC2zegN61P4NdmCoj08pcZR3JVzv8klWir1q-0ZGPTXRcj1UyfuFji6dTwdZ7fYV0wKLLB1qe1WnCKmiwbXOg-v6gVwKMtulCMJld1QIrpE9ZvHrWXk7RX7DfzYtfnCzSdHK5uCjA9_hDoVlq3CjHWtmFvb4BS8rPhBml9yYuV5yypvHafFN_8iqjhQbPTJQthNFAbheme3SQFjY-8AC-kgesl1SA3exuZssDoVkMNdVKYUBmvPdvvqS7zEpG7TkNjBC3x9Px"
+                  />
                 </div>
               </div>
-            ))}
-
-            <button className="w-full py-3 bg-white rounded-xl text-sm font-bold text-on-surface-variant hover:bg-stone-50 transition-colors ghost-border">
-              View All Activity
-            </button>
-          </div>
-        </section>
-      </div>
-
-      {/* Quick Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        {/* Top Subject */}
-        <div className="bg-surface-container-lowest rounded-2xl p-6 ghost-border animate-slide-up stagger-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 bg-primary/10 rounded-lg">
-              <span className="material-symbols-outlined text-primary text-lg">
-                school
-              </span>
-            </div>
-            <h4 className="font-bold font-headline text-on-surface">
-              Top Subject
-            </h4>
-          </div>
-          <p className="text-2xl font-extrabold font-headline text-primary mb-1">
-            Architecture
-          </p>
-          <p className="text-sm text-on-surface-variant">
-            142 notes · 68% of total sales
-          </p>
-          <div className="mt-4 w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
-            <div
-              className="h-full rounded-full bg-signature-gradient transition-all duration-1000"
-              style={{ width: "68%" }}
-            ></div>
-          </div>
-        </div>
-
-        {/* Avg. Purchase Value */}
-        <div className="bg-surface-container-lowest rounded-2xl p-6 ghost-border animate-slide-up stagger-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 bg-tertiary/10 rounded-lg">
-              <span className="material-symbols-outlined text-tertiary text-lg">
-                payments
-              </span>
-            </div>
-            <h4 className="font-bold font-headline text-on-surface">
-              Avg. Purchase
-            </h4>
-          </div>
-          <p className="text-2xl font-extrabold font-headline text-on-surface mb-1">
-            ₹ 1,412
-          </p>
-          <p className="text-sm text-on-surface-variant">
-            Per customer · <span className="text-tertiary font-semibold">+5.3%</span> vs last month
-          </p>
-          <div className="mt-4 flex gap-1">
-            {[40, 55, 35, 65, 50, 80, 45, 70, 60, 85, 55, 75].map((h, i) => (
-              <div
-                key={i}
-                className="flex-1 rounded-sm bg-tertiary/15 hover:bg-tertiary/30 transition-colors"
-                style={{ height: `${h * 0.5}px` }}
-              ></div>
-            ))}
-          </div>
-        </div>
-
-        {/* Conversion Rate */}
-        <div className="bg-surface-container-lowest rounded-2xl p-6 ghost-border animate-slide-up stagger-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 bg-secondary-container rounded-lg">
-              <span className="material-symbols-outlined text-on-secondary-fixed-variant text-lg">
-                conversion_path
-              </span>
-            </div>
-            <h4 className="font-bold font-headline text-on-surface">
-              Conversion Rate
-            </h4>
-          </div>
-          <p className="text-2xl font-extrabold font-headline text-on-surface mb-1">
-            24.8%
-          </p>
-          <p className="text-sm text-on-surface-variant">
-            Visitor to customer · Healthy range
-          </p>
-          <div className="mt-4 flex items-center gap-3">
-            <div className="relative w-12 h-12">
-              <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="14"
-                  fill="none"
-                  stroke="#e9e8e7"
-                  strokeWidth="3"
-                />
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="14"
-                  fill="none"
-                  stroke="#006c05"
-                  strokeWidth="3"
-                  strokeDasharray="87.96"
-                  strokeDashoffset="66"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-primary">Good</span>
-              <span className="text-[10px] text-stone-400">
-                Industry avg: 18%
-              </span>
+              <div className="space-y-4">
+                <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm rotate-[3deg] hover:rotate-0 transition-transform duration-500">
+                  <img
+                    alt="Student Learning"
+                    className="rounded-lg w-full h-56 object-cover"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAW0BcjG6cOePHv10LWB-WgRqjNiN5tlM7fL5jC_gfdr7udAOWXwUseTpSFwnPRSFhEwIwrAwISDD8FLbZ0fNdTLsjfqaj3FqUBBb933aEwBQ6CuINC-2ahLx6q9W_RgzFKMAj-Csc0Y71xADnlUykghROFqZmRnvEClfeDySn2t1yFDAX9tiWJqGDZspxEWIvBLl6o7cZ1loRAVtCzNhP25HI3EwroXC6Uh92VbUwMt2TDzvQLNA37UTtrnoZIl107XOJFPyXOaUFd"
+                  />
+                </div>
+                <div className="bg-surface-container-lowest p-4 rounded-xl shadow-sm rotate-[-1deg] hover:rotate-0 transition-transform duration-500">
+                  <img
+                    alt="Tools for Success"
+                    className="rounded-lg w-full h-36 object-cover"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfhynEIiNHclwatWIODqb8MSivjZQHW9xD1yQ1VY05GaOgcguBiPvJKJcmc3t8TnZ1RIAx7LRgxO0koV77qHEviftiqXbg2LfcVKM8tt8N4_BStm2wTkHSizKLpbnSXalCcVf3kKDkWB3Qr4Ru1ST-K2bihqLR2HnaCRSYSEKRDCH9qPZaiB6FtHPla6EdBXDtEP6O-uiV8E25etsGDoXgK2E4N1SJs3s7znJXxvq1Cej8V3aYzGELiZZJNCRxv49OpisTMzEE_2p-"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Quick Actions */}
-      <div className="bg-surface-container-low rounded-3xl p-10 relative overflow-hidden animate-slide-up stagger-6">
-        <div className="relative z-10">
-          <div className="inline-block px-3 py-1 bg-tertiary/10 text-tertiary text-[10px] font-extrabold uppercase tracking-widest rounded-full mb-4">
-            Quick Actions
-          </div>
-          <h4 className="text-3xl font-extrabold font-headline text-green-900 mb-4 leading-tight max-w-lg">
-            Manage your scholarly platform with ease
-          </h4>
-          <p className="text-on-surface-variant leading-relaxed mb-8 max-w-xl">
-            Upload new academic notes, manage customer access, and track your
-            platform performance — all from one centralized dashboard.
-          </p>
-          <div className="flex gap-4">
-            <a
-              href="/upload"
-              className="bg-signature-gradient text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity flex items-center gap-2"
+      {/* Featured Section: Bento Grid */}
+      <section className="bg-surface-container-low py-24 px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-end mb-16">
+            <div>
+              <h2 className="font-headline text-3xl lg:text-4xl font-bold text-on-surface mb-4">
+                Curated Note Archives
+              </h2>
+              <p className="text-secondary font-medium">
+                Explore by subject or academic level
+              </p>
+            </div>
+            <Link
+              href="/browse"
+              className="hidden md:flex items-center gap-2 text-primary font-bold group"
             >
-              <span className="material-symbols-outlined text-lg">
-                upload_file
+              Explore Archives
+              <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">
+                arrow_forward
               </span>
-              Upload Notes
-            </a>
-            <a
-              href="/customers"
-              className="bg-surface-container-lowest text-on-surface px-8 py-3 rounded-xl font-bold text-sm ghost-border hover:shadow-md transition-all flex items-center gap-2"
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {/* Mathematics (Large) */}
+            <div className="md:col-span-2 lg:row-span-2 bg-surface-container-lowest p-8 rounded-xl ghost-border hover:shadow-md transition-shadow group flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-6">
+                  <span className="material-symbols-outlined">functions</span>
+                </div>
+                <h3 className="font-headline text-2xl font-bold mb-4">
+                  Mathematics
+                </h3>
+                <p className="text-secondary leading-relaxed mb-8">
+                  From Calculus to Linear Algebra, get step-by-step solutions and
+                  simplified theory for complex problems.
+                </p>
+              </div>
+              <img
+                alt="Math"
+                className="rounded-lg h-48 w-full object-cover grayscale group-hover:grayscale-0 transition-all mb-4"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgTuvUbFpF_Gfb7SuNlOxIGVnhoOGsoYTz_jm18MxPq0emYhXyp2eMggPXuCD8HFJL1wwXK1AyO_ZLAySfqh1dCd2hb7qBuiyyStq-6l6XH1mMcOzc3zxvYiy6dARLTUC2Zk-yk5S40JITUuHg-lkTkrJ1sKt39ILOQH7FbimhDJGvxCgjr4kDDahtlAk2PZ2dKGyqnkjxBIzf_-CVWPsV7Hmb1Pui2f_LtgKUD6qXKCJ_dkozZMHXYNIyNWKYdQwyyTzynuC75ROf"
+              />
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-bold text-primary">
+                  120+ Sets Available
+                </span>
+                <span className="material-symbols-outlined text-primary">
+                  north_east
+                </span>
+              </div>
+            </div>
+
+            {/* Science */}
+            <Link
+              href="/browse?category=science"
+              className="bg-surface-container-lowest p-6 rounded-xl ghost-border hover:shadow-md transition-shadow group"
             >
-              <span className="material-symbols-outlined text-lg">group</span>
-              View Customers
-            </a>
+              <div className="w-10 h-10 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary mb-4">
+                <span className="material-symbols-outlined">science</span>
+              </div>
+              <h3 className="font-headline text-xl font-bold mb-2">Science</h3>
+              <p className="text-on-surface-variant text-sm mb-6">
+                Detailed Physics, Chemistry, and Biology diagrams.
+              </p>
+              <div className="h-1 bg-surface-container rounded-full overflow-hidden">
+                <div className="h-full bg-tertiary w-[85%]"></div>
+              </div>
+            </Link>
+
+            {/* History */}
+            <Link
+              href="/browse?category=history"
+              className="bg-surface-container-lowest p-6 rounded-xl ghost-border hover:shadow-md transition-shadow group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary mb-4">
+                <span className="material-symbols-outlined">history_edu</span>
+              </div>
+              <h3 className="font-headline text-xl font-bold mb-2">History</h3>
+              <p className="text-on-surface-variant text-sm mb-6">
+                Chronological timelines and essay structures.
+              </p>
+              <div className="h-1 bg-surface-container rounded-full overflow-hidden">
+                <div className="h-full bg-secondary w-[70%]"></div>
+              </div>
+            </Link>
+
+            {/* Programming (Wide) */}
+            <div className="lg:col-span-2 bg-primary text-on-primary p-8 rounded-xl shadow-sm flex items-center justify-between overflow-hidden relative group">
+              <div className="relative z-10">
+                <h3 className="font-headline text-2xl font-bold mb-2">
+                  Programming
+                </h3>
+                <p className="text-on-primary/80 max-w-xs mb-6">
+                  Master Java, Python, and C++ with clean code snippets and
+                  logic notes.
+                </p>
+                <Link
+                  href="/browse?category=programming"
+                  className="bg-surface-container-lowest text-primary px-6 py-2 rounded-full font-bold text-sm inline-block"
+                >
+                  Start Coding
+                </Link>
+              </div>
+              <div className="absolute right-[-20px] top-[-20px] opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-500">
+                <span className="material-symbols-outlined text-[160px]">
+                  terminal
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-        <span className="material-symbols-outlined text-[180px] opacity-[0.04] absolute -right-8 -bottom-8 rotate-12">
-          auto_stories
-        </span>
-      </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-24 px-8 bg-surface">
+        <div className="max-w-5xl mx-auto bg-signature-gradient rounded-[2rem] p-12 lg:p-20 text-center text-on-primary relative overflow-hidden">
+          <div className="relative z-10">
+            <h2 className="font-headline text-4xl lg:text-5xl font-extrabold mb-6">
+              Ready to elevate your grades?
+            </h2>
+            <p className="text-lg text-on-primary/90 mb-12 max-w-2xl mx-auto leading-relaxed">
+              Join over 50,000 students who trust our handwritten archives to
+              simplify their complex studies.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button className="bg-surface-container-lowest text-primary px-10 py-4 rounded-full font-bold text-lg shadow-xl hover:scale-105 transition-all">
+                Join Now
+              </button>
+              <Link
+                href="/browse"
+                className="bg-primary-container/20 border border-on-primary/20 backdrop-blur-md text-on-primary px-10 py-4 rounded-full font-bold text-lg hover:bg-primary-container/30 transition-all text-center"
+              >
+                View Samples
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+      </main>
+      <PublicFooter />
     </>
   );
 }

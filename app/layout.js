@@ -1,3 +1,4 @@
+
 import { Plus_Jakarta_Sans, Inter } from "next/font/google";
 import "./globals.css";
 
@@ -14,7 +15,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "The Academy CMS — Veridian Scholar Panel",
+  title: "Architectural Academy | Premier Handwritten Notes",
   description:
     "A premium content management system for academic note publishing, customer management, and scholarly resource curation.",
 };
@@ -31,7 +32,7 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full bg-surface text-on-surface font-body antialiased">
+      <body className="min-h-full bg-surface text-on-surface font-body antialiased" suppressHydrationWarning>
         {children}
       </body>
     </html>

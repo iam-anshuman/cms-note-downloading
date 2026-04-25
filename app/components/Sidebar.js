@@ -4,10 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
-  { label: "Dashboard", icon: "dashboard", href: "/" },
-  { label: "Customers", icon: "group", href: "/customers" },
-  { label: "Upload", icon: "upload_file", href: "/upload" },
-  { label: "Notes List", icon: "description", href: "/notes" },
+  { label: "Dashboard", icon: "dashboard", href: "/admin" },
+  { label: "Customers", icon: "group", href: "/admin/customers" },
+  { label: "Upload", icon: "upload_file", href: "/admin/upload" },
+  { label: "Notes List", icon: "description", href: "/admin/notes" },
+  { label: "Bundles", icon: "inventory_2", href: "/admin/bundles" },
 ];
 
 export default function Sidebar() {
@@ -20,9 +21,11 @@ export default function Sidebar() {
 
       {/* Brand Header */}
       <div className="mb-10 relative z-10">
-        <h1 className="text-xl font-extrabold tracking-tight text-green-800 font-headline">
-          The Academy CMS
-        </h1>
+        <Link href="/admin">
+          <h1 className="text-xl font-extrabold tracking-tight text-green-800 font-headline">
+            The Academy CMS
+          </h1>
+        </Link>
         <p className="text-[10px] text-stone-400 uppercase tracking-[0.2em] mt-1.5 font-label">
           Veridian Scholar Panel
         </p>
@@ -32,8 +35,8 @@ export default function Sidebar() {
       <nav className="flex-1 space-y-1 relative z-10">
         {navItems.map((item) => {
           const isActive =
-            item.href === "/"
-              ? pathname === "/"
+            item.href === "/admin"
+              ? pathname === "/admin"
               : pathname.startsWith(item.href);
 
           return (
@@ -66,8 +69,20 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Sign Out Button */}
-      <div className="relative z-10 mt-auto space-y-4">
+      {/* Bottom */}
+      <div className="relative z-10 mt-auto space-y-3">
+        {/* View Public Site */}
+        <Link
+          href="/"
+          className="w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm text-stone-400 font-medium hover:bg-primary/5 hover:text-primary transition-all duration-200 group"
+        >
+          <span className="material-symbols-outlined text-xl group-hover:text-primary transition-colors">
+            language
+          </span>
+          <span>View Site</span>
+        </Link>
+
+        {/* Sign Out */}
         <button className="w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm text-stone-400 font-medium hover:bg-red-50 hover:text-red-600 transition-all duration-200 group">
           <span className="material-symbols-outlined text-xl group-hover:text-red-500 transition-colors">
             logout

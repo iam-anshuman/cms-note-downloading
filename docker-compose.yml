@@ -1,0 +1,16 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+      - ./public/uploads:/app/public/uploads
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=change_this_to_a_secure_random_string
+      - NEXT_PUBLIC_RAZORPAY_KEY_ID=your_razorpay_key_id
+      - RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+    restart: unless-stopped

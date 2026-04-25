@@ -9,9 +9,11 @@ export default function UploadPage() {
   
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
+  const [authorName, setAuthorName] = useState("");
+  const [pages, setPages] = useState("");
   const [price, setPrice] = useState("");
-  const [tags, setTags] = useState([]); // array of selected tag strings
-  const [customTag, setCustomTag] = useState(""); // for typing a new custom tag
+  const [tags, setTags] = useState([]);
+  const [customTag, setCustomTag] = useState("");
   const [accessDuration, setAccessDuration] = useState("6");
   
   const [file, setFile] = useState(null);
@@ -163,6 +165,8 @@ export default function UploadPage() {
       const notePayload = {
         title,
         subject,
+        authorName,
+        pages: parseInt(pages) || 0,
         price: parseFloat(price),
         tags: tags,
         accessDurationMonths: parseInt(accessDuration),
@@ -287,6 +291,36 @@ export default function UploadPage() {
                     expand_more
                   </span>
                 </div>
+              </div>
+            </div>
+
+            {/* Author + Pages row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              <div className="space-y-2">
+                <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant opacity-70">
+                  Author Name
+                </label>
+                <input
+                  value={authorName}
+                  onChange={(e) => setAuthorName(e.target.value)}
+                  className="w-full bg-transparent border-t-0 border-x-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-0 py-3 font-body text-on-surface placeholder:text-stone-300 transition-all outline-none"
+                  placeholder="e.g. Dr. Ramesh Kumar"
+                  type="text"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant opacity-70">
+                  Number of Pages
+                </label>
+                <input
+                  value={pages}
+                  onChange={(e) => setPages(e.target.value)}
+                  className="w-full bg-transparent border-t-0 border-x-0 border-b-2 border-outline-variant/30 focus:border-primary focus:ring-0 px-0 py-3 font-body text-on-surface placeholder:text-stone-300 transition-all outline-none"
+                  placeholder="e.g. 48"
+                  type="number"
+                  min="0"
+                />
               </div>
             </div>
 
@@ -571,6 +605,8 @@ export default function UploadPage() {
                   </h5>
                   <p className="text-sm text-on-surface-variant opacity-80">
                     {subject || "Subject pending"}
+                    {authorName && <span className="ml-2">· By {authorName}</span>}
+                    {pages && parseInt(pages) > 0 && <span className="ml-2">· {pages}p</span>}
                   </p>
                   
                   {price && (

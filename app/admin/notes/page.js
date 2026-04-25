@@ -357,7 +357,7 @@ export default function AdminNotesPage() {
                           </div>
                           <div>
                             <p className="font-bold text-sm text-on-surface truncate max-w-[180px]">{note.title}</p>
-                            <p className="text-[11px] text-on-surface-variant">{note.author_name} • {note.pages}p</p>
+                            <p className="text-[11px] text-on-surface-variant">{note.author_name}{note.pages > 0 ? ` • ${note.pages}p` : ""}</p>
                           </div>
                         </div>
                       </td>

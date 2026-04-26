@@ -61,8 +61,8 @@ function EditModal({ note, onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="bg-[#fbf9f8] rounded-2xl shadow-2xl w-full max-w-lg p-8 space-y-6 animate-slide-up">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+      <div className="bg-[#fbf9f8] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[90dvh] overflow-y-auto p-6 sm:p-8 space-y-6 animate-slide-up">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-extrabold font-headline text-on-surface">Edit Note</h3>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-surface-container-high text-on-surface-variant">
@@ -277,15 +277,15 @@ export default function AdminNotesPage() {
         </div>
       )}
 
-      <header className="mb-10 animate-fade-in">
-        <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface">Notes Analytics</h2>
-        <p className="text-on-surface-variant font-medium mt-1 max-w-xl leading-relaxed">
+      <header className="mb-8 animate-fade-in">
+        <h2 className="text-2xl sm:text-4xl font-extrabold font-headline tracking-tight text-on-surface">Notes Analytics</h2>
+        <p className="text-on-surface-variant font-medium mt-1 max-w-xl leading-relaxed text-sm sm:text-base">
           Track performance, manage status, and edit your published study materials.
         </p>
       </header>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10 animate-slide-up">
+      <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-8 animate-slide-up">
         {[
           { label: "Total Notes",  value: notes.length,  color: "text-on-surface" },
           { label: "Published",    value: published,      color: "text-primary" },
@@ -313,7 +313,88 @@ export default function AdminNotesPage() {
         </div>
 
         <div className="bg-surface-container-lowest rounded-2xl ghost-border overflow-hidden">
-          <div className="overflow-x-auto">
+
+          {/* ── Mobile card list (hidden on md+) ── */}
+          <div className="md:hidden divide-y divide-surface-container-high">
+            {loading ? (
+              <div className="text-center py-16 text-on-surface-variant">
+                <span className="material-symbols-outlined text-4xl animate-spin block mb-2">progress_activity</span>
+                Loading…
+              </div>
+            ) : notes.length === 0 ? (
+              <div className="text-center py-16 text-on-surface-variant">
+                <span className="material-symbols-outlined text-5xl text-outline-variant/30 block mb-3">note_stack</span>
+                No notes yet.
+              </div>
+            ) : notes.map((note) => {
+              let thumbSrc = null;
+              try {
+                const p = JSON.parse(note.thumbnail_url);
+                thumbSrc = Array.isArray(p) ? p[0] : p;
+              } catch { thumbSrc = note.thumbnail_url; }
+
+              return (
+                <div key={note.id} className="flex items-start gap-3 p-4">
+                  {/* Thumb */}
+                  <div className="h-14 w-14 rounded-lg bg-surface-container-high overflow-hidden flex-shrink-0">
+                    {thumbSrc
+                      ? <img alt={note.title} className="w-full h-full object-cover" src={thumbSrc} />
+                      : <div className="w-full h-full flex items-center justify-center"><span className="material-symbols-outlined text-sm text-outline-variant/60">description</span></div>
+                    }
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm text-on-surface truncate">{note.title}</p>
+                    <p className="text-[11px] text-on-surface-variant">
+                      {note.subject}{note.author_name ? ` · ${note.author_name}` : ""}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                        note.deleted_at ? "bg-red-100 text-red-600" : STATUS_STYLES[note.status] || STATUS_STYLES.draft
+                      }`}>
+                        {note.deleted_at ? "Deleted" : note.status}
+                      </span>
+                      <span className="text-xs font-bold text-on-surface">{formatINR(note.price_paise)}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    {note.deleted_at ? (
+                      <button
+                        onClick={() => handleRestore(note)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-[11px] font-bold transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-sm">restore</span>
+                        Restore
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-0.5">
+                        <button onClick={() => setEditingNote(note)} title="Edit" className="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary text-on-surface-variant">
+                          <span className="material-symbols-outlined text-base">edit</span>
+                        </button>
+                        {note.status === "published"
+                          ? <button onClick={() => handleStatusChange(note, "archived")} title="Archive" className="p-1.5 rounded-lg hover:bg-amber-50 hover:text-amber-600 text-on-surface-variant">
+                              <span className="material-symbols-outlined text-base">visibility_off</span>
+                            </button>
+                          : <button onClick={() => handleStatusChange(note, "published")} title="Publish" className="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary text-on-surface-variant">
+                              <span className="material-symbols-outlined text-base">visibility</span>
+                            </button>
+                        }
+                        <button onClick={() => setConfirmDelete(note.id)} title="Delete" className="p-1.5 rounded-lg hover:bg-error/10 hover:text-error text-on-surface-variant">
+                          <span className="material-symbols-outlined text-base">delete</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── Desktop table (hidden on mobile) ── */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-surface-container-low">
@@ -438,7 +519,7 @@ export default function AdminNotesPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </div>{/* end desktop table */}
         </div>
       </section>
     </>

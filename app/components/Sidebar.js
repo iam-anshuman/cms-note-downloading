@@ -2,36 +2,55 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 const navItems = [
-  { label: "Dashboard", icon: "dashboard", href: "/admin" },
-  { label: "Customers", icon: "group", href: "/admin/customers" },
-  { label: "Upload", icon: "upload_file", href: "/admin/upload" },
-  { label: "Notes List", icon: "description", href: "/admin/notes" },
-  { label: "Bundles", icon: "inventory_2", href: "/admin/bundles" },
+  { label: "Dashboard", icon: "dashboard",     href: "/admin" },
+  { label: "Customers", icon: "group",          href: "/admin/customers" },
+  { label: "Upload",    icon: "upload_file",    href: "/admin/upload" },
+  { label: "Notes",     icon: "description",    href: "/admin/notes" },
+  { label: "Bundles",   icon: "inventory_2",    href: "/admin/bundles" },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }) {
   const pathname = usePathname();
+  const router   = useRouter();
 
-  return (
-    <aside className="h-screen w-64 fixed left-0 top-0 bg-stone-50 flex flex-col py-8 px-6 z-50">
-      {/* Noise Overlay */}
-      <div className="noise-overlay absolute inset-0 rounded-none z-0"></div>
+  // Close on route change
+  useEffect(() => { onClose?.(); }, [pathname]);
 
-      {/* Brand Header */}
-      <div className="mb-10 relative z-10">
-        <Link href="/admin">
-          <h1 className="text-xl font-extrabold tracking-tight text-green-800 font-headline">
-            The Academy CMS
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+  }
+
+  const content = (
+    <aside className="h-full w-64 bg-stone-50 flex flex-col py-8 px-6 relative">
+      {/* Noise */}
+      <div className="noise-overlay absolute inset-0 z-0" />
+
+      {/* Brand */}
+      <div className="mb-10 relative z-10 flex items-center justify-between">
+        <Link href="/admin" onClick={onClose}>
+          <h1 className="text-xl font-extrabold tracking-tight text-green-800 font-headline leading-tight">
+            The Academy<br />
+            <span className="text-[10px] text-stone-400 uppercase tracking-[0.2em] font-label font-normal">
+              Veridian Scholar Panel
+            </span>
           </h1>
         </Link>
-        <p className="text-[10px] text-stone-400 uppercase tracking-[0.2em] mt-1.5 font-label">
-          Veridian Scholar Panel
-        </p>
+        {/* Close button — only shown in drawer mode */}
+        <button
+          onClick={onClose}
+          className="lg:hidden p-1 rounded-lg hover:bg-stone-200 text-stone-400"
+          aria-label="Close menu"
+        >
+          <span className="material-symbols-outlined text-xl">close</span>
+        </button>
       </div>
 
-      {/* Navigation */}
+      {/* Nav */}
       <nav className="flex-1 space-y-1 relative z-10">
         {navItems.map((item) => {
           const isActive =
@@ -51,15 +70,9 @@ export default function Sidebar() {
             >
               <span
                 className={`material-symbols-outlined text-xl ${
-                  isActive
-                    ? "text-primary"
-                    : "text-stone-400 group-hover:text-green-700"
+                  isActive ? "text-primary" : "text-stone-400 group-hover:text-green-700"
                 }`}
-                style={
-                  isActive
-                    ? { fontVariationSettings: "'FILL' 1, 'wght' 500" }
-                    : {}
-                }
+                style={isActive ? { fontVariationSettings: "'FILL' 1, 'wght' 500" } : {}}
               >
                 {item.icon}
               </span>
@@ -70,26 +83,49 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom */}
-      <div className="relative z-10 mt-auto space-y-3">
-        {/* View Public Site */}
+      <div className="relative z-10 mt-auto space-y-1">
         <Link
           href="/"
-          className="w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm text-stone-400 font-medium hover:bg-primary/5 hover:text-primary transition-all duration-200 group"
+          className="w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm text-stone-400 font-medium hover:bg-primary/5 hover:text-primary transition-all group"
         >
-          <span className="material-symbols-outlined text-xl group-hover:text-primary transition-colors">
-            language
-          </span>
+          <span className="material-symbols-outlined text-xl group-hover:text-primary transition-colors">language</span>
           <span>View Site</span>
         </Link>
-
-        {/* Sign Out */}
-        <button className="w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm text-stone-400 font-medium hover:bg-red-50 hover:text-red-600 transition-all duration-200 group">
-          <span className="material-symbols-outlined text-xl group-hover:text-red-500 transition-colors">
-            logout
-          </span>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm text-stone-400 font-medium hover:bg-red-50 hover:text-red-600 transition-all group"
+        >
+          <span className="material-symbols-outlined text-xl group-hover:text-red-500 transition-colors">logout</span>
           <span>Sign Out</span>
         </button>
       </div>
     </aside>
+  );
+
+  return (
+    <>
+      {/* ── Desktop: fixed sidebar ── */}
+      <div className="hidden lg:block fixed left-0 top-0 h-screen w-64 z-50 shadow-sm">
+        {content}
+      </div>
+
+      {/* ── Mobile: slide-in drawer ── */}
+      {/* Backdrop */}
+      <div
+        className={`lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      {/* Drawer panel */}
+      <div
+        className={`lg:hidden fixed left-0 top-0 h-full z-50 shadow-2xl transition-transform duration-300 ease-in-out ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {content}
+      </div>
+    </>
   );
 }

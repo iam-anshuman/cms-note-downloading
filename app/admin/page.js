@@ -78,18 +78,18 @@ export default async function AdminDashboardPage() {
   return (
     <>
       {/* Page Header */}
-      <header className="mb-10 animate-fade-in">
-        <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface">
+      <header className="mb-8 animate-fade-in">
+        <h2 className="text-2xl sm:text-4xl font-extrabold font-headline tracking-tight text-on-surface">
           Welcome back, Admin
         </h2>
-        <p className="text-on-surface-variant font-medium mt-1 max-w-xl leading-relaxed">
+        <p className="text-on-surface-variant font-medium mt-1 max-w-xl leading-relaxed text-sm sm:text-base">
           Here&apos;s a real-time snapshot of your Veridian Scholar Panel
           performance and activity.
         </p>
       </header>
 
       {/* Metrics Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
         <div className="bg-surface-container-lowest p-6 rounded-xl ghost-border flex flex-col justify-between animate-slide-up stagger-1 hover:shadow-lg hover:shadow-stone-200/40 transition-shadow duration-300">
           <div className="flex justify-between items-start">
             <div className="p-3 bg-primary/10 rounded-lg text-primary">
@@ -162,7 +162,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-12">
         <section className="lg:col-span-2 animate-slide-up stagger-4">
           <h3 className="text-xl font-extrabold font-headline tracking-tight mb-6">
             Quick Actions
@@ -175,33 +175,27 @@ export default async function AdminDashboardPage() {
               <h4 className="text-2xl font-extrabold font-headline text-green-900 mb-4 leading-tight max-w-lg">
                 Manage your scholarly platform
               </h4>
-              <div className="flex gap-4 flex-wrap mt-6">
+              <div className="flex gap-3 flex-wrap mt-6">
                 <a
                   href="/admin/upload"
-                  className="bg-signature-gradient text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity flex items-center gap-2"
+                  className="bg-signature-gradient text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity flex items-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-lg">
-                    upload_file
-                  </span>
+                  <span className="material-symbols-outlined text-lg">upload_file</span>
                   Upload Notes
                 </a>
                 <a
                   href="/admin/bundles"
-                  className="bg-surface-container-lowest text-on-surface px-8 py-3 rounded-xl font-bold text-sm ghost-border hover:shadow-md transition-all flex items-center gap-2"
+                  className="bg-surface-container-lowest text-on-surface px-6 py-2.5 rounded-xl font-bold text-sm ghost-border hover:shadow-md transition-all flex items-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-lg">
-                    inventory_2
-                  </span>
-                  Create Bundle
+                  <span className="material-symbols-outlined text-lg">inventory_2</span>
+                  Bundles
                 </a>
                 <a
                   href="/admin/customers"
-                  className="bg-surface-container-lowest text-on-surface px-8 py-3 rounded-xl font-bold text-sm ghost-border hover:shadow-md transition-all flex items-center gap-2"
+                  className="bg-surface-container-lowest text-on-surface px-6 py-2.5 rounded-xl font-bold text-sm ghost-border hover:shadow-md transition-all flex items-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-lg">
-                    group
-                  </span>
-                  View Customers
+                  <span className="material-symbols-outlined text-lg">group</span>
+                  Customers
                 </a>
               </div>
             </div>

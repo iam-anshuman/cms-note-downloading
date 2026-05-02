@@ -19,6 +19,11 @@ migrations_dir = "drizzle/migrations"
 binding = "R2"
 bucket_name = "cms-notes-files"
 
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
+
 # Worker needs to call itself for some Next.js ISR/image routes
 [[services]]
 binding = "WORKER_SELF_REFERENCE"

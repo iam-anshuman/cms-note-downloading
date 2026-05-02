@@ -1,49 +1,68 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
+import { getUser } from "@/lib/auth";
+import { bundles, bundleNotes } from "@/lib/schema";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+
+async function requireAdmin() {
+  const user = await getUser();
+  if (!user || user.role !== "admin") return null;
+  return user;
+}
+
 export async function PUT(request, { params }) {
+  if (!await requireAdmin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   try {
     const { id } = await params;
-    const db = await getDb();
+    const { env } = await getCloudflareContext();
+    const db = getDb(env.DB);
     const body = await request.json();
 
-    const updates = [];
-    const values = [];
+    const patch = {};
+    if (body.name !== undefined) patch.name = body.name;
+    if (body.description !== undefined) patch.description = body.description;
+    if (body.discountPercent !== undefined) patch.discountPercent = body.discountPercent;
+    if (body.status !== undefined) patch.status = body.status;
+    if (body.badgeText !== undefined) patch.badgeText = body.badgeText;
 
-    if (body.name !== undefined) { updates.push("name = ?"); values.push(body.name); }
-    if (body.description !== undefined) { updates.push("description = ?"); values.push(body.description); }
-    if (body.discountPercent !== undefined) { updates.push("discount_percent = ?"); values.push(body.discountPercent); }
-    if (body.status !== undefined) { updates.push("status = ?"); values.push(body.status); }
-    if (body.badgeText !== undefined) { updates.push("badge_text = ?"); values.push(body.badgeText); }
-
-    if (updates.length > 0) {
-      await db.run(`UPDATE bundles SET ${updates.join(", ")} WHERE id = ?`, [...values, id]);
+    if (Object.keys(patch).length > 0) {
+      await db.update(bundles).set(patch).where(eq(bundles.id, id));
     }
 
     if (body.noteIds && Array.isArray(body.noteIds)) {
-      await db.run("DELETE FROM bundle_notes WHERE bundle_id = ?", [id]);
-      for (let noteId of body.noteIds) {
-        await db.run("INSERT INTO bundle_notes (id, bundle_id, note_id) VALUES (?, ?, ?)", [crypto.randomUUID(), id, noteId]);
+      await db.delete(bundleNotes).where(eq(bundleNotes.bundleId, id));
+      for (const noteId of body.noteIds) {
+        await db.insert(bundleNotes).values({
+          id: crypto.randomUUID(),
+          bundleId: id,
+          noteId,
+        });
       }
     }
 
-    const bundle = await db.get("SELECT * FROM bundles WHERE id = ?", [id]);
-
+    const [bundle] = await db.select().from(bundles).where(eq(bundles.id, id)).limit(1);
     return NextResponse.json({ bundle });
   } catch (err) {
+    console.error("[PUT /api/bundles/admin/:id]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function DELETE(request, { params }) {
+  if (!await requireAdmin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   try {
     const { id } = await params;
-    const db = await getDb();
+    const { env } = await getCloudflareContext();
+    const db = getDb(env.DB);
 
-    await db.run("DELETE FROM bundles WHERE id = ?", [id]);
-
+    await db.delete(bundles).where(eq(bundles.id, id));
     return NextResponse.json({ message: "Bundle deleted" });
   } catch (err) {
+    console.error("[DELETE /api/bundles/admin/:id]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

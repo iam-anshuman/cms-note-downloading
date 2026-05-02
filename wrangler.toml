@@ -1,0 +1,29 @@
+name = "cms-notes"
+main = ".open-next/worker.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# D1 Database — Cloudflare SQL (replaces SQLite)
+[[d1_databases]]
+binding = "DB"
+database_name = "cms-notes-db"
+database_id = "090b0c24-3c05-4366-9cd6-c0b5bcdf9faa"
+migrations_dir = "drizzle/migrations"
+
+# R2 Bucket — Object storage (replaces local disk)
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "cms-notes-files"
+
+# Worker needs to call itself for some Next.js ISR/image routes
+[[services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "cms-notes"
+
+[vars]
+# Update this after first deploy to your actual workers.dev subdomain
+NEXT_PUBLIC_APP_URL = "https://cms-notes.anshumant72.workers.dev"

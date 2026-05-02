@@ -1,4 +1,5 @@
-import { getDb } from "@/lib/db";
+import { getUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "Dashboard — The Academy CMS",
@@ -6,42 +7,24 @@ export const metadata = {
 };
 
 async function getStats() {
-  const db = await getDb();
-  
-  const ordersRes = await db.all("SELECT amount_paise FROM orders WHERE status = 'paid'");
-  const customersRes = await db.get("SELECT COUNT(*) as count FROM users WHERE role = 'customer'");
-  const notesRes = await db.get("SELECT COUNT(*) as count FROM notes WHERE status = 'published'");
-  const bundlesRes = await db.get("SELECT COUNT(*) as count FROM bundles WHERE status = 'active'");
-
-  const revenue = ordersRes.reduce((sum, o) => sum + (o.amount_paise || 0), 0);
-
+  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/dashboard/admin`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return { revenue: 0, orders: 0, customers: 0, notes: 0 };
+  const data = await res.json();
   return {
-    revenue: revenue / 100,
-    orders: ordersRes.length || 0,
-    customers: customersRes.count || 0,
-    notes: notesRes.count || 0,
+    revenue: data.totalRevenue || 0,
+    orders: data.totalOrders || 0,
+    customers: data.totalCustomers || 0,
+    notes: data.totalNotes || 0,
   };
 }
 
 async function getRecentOrders() {
-  const db = await getDb();
-  
-  const orders = await db.all("SELECT * FROM orders WHERE status = 'paid' ORDER BY created_at DESC LIMIT 5");
-  
-  const enrichedOrders = [];
-  for (const order of orders) {
-    const user = await db.get("SELECT full_name, email FROM users WHERE id = ?", [order.user_id]);
-    const orderItems = await db.all("SELECT n.title FROM order_items oi JOIN notes n ON oi.note_id = n.id WHERE oi.order_id = ?", [order.id]);
-    
-    enrichedOrders.push({
-      ...order,
-      users: user,
-      order_items: orderItems.map(item => ({ notes: { title: item.title } }))
-    });
-  }
-  
-  return enrichedOrders;
+  // Recent orders are loaded client-side via the orders history API
+  return [];
 }
+
 
 export default async function AdminDashboardPage() {
   const [stats, recentOrders] = await Promise.all([

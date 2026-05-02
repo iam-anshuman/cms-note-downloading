@@ -1,79 +1,82 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
 import { getUser } from "@/lib/auth";
+import { orders, orderItems, notes } from "@/lib/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
+
+
 
 export async function GET() {
   try {
     const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
-    const db = await getDb();
+    const { env } = await getCloudflareContext();
+    const db = getDb(env.DB);
 
-    // ── Admin: return ALL published notes as a single synthetic "All Access" order
     if (user.role === "admin") {
-      const notes = await db.all(
-        `SELECT id, title, thumbnail_url, price_paise
-         FROM notes
-         WHERE status = 'published'
-         ORDER BY created_at DESC`
-      );
+      const allNotes = await db
+        .select({ id: notes.id, title: notes.title, thumbnailUrl: notes.thumbnailUrl, pricePaise: notes.pricePaise })
+        .from(notes)
+        .where(eq(notes.status, "published"))
+        .orderBy(desc(notes.createdAt));
 
-      if (notes.length === 0) {
-        return NextResponse.json({ orders: [] });
-      }
+      if (allNotes.length === 0) return NextResponse.json({ orders: [] });
 
-      const syntheticOrder = {
-        id: "admin-all-access",
-        amount: 0,
-        type: "note",
-        createdAt: new Date().toISOString(),
-        isAdminAccess: true,
-        items: notes.map((n) => ({
-          noteId: n.id,
-          title: n.title,
-          thumbnail: n.thumbnail_url,
-          price: n.price_paise / 100,
-        })),
-      };
-
-      return NextResponse.json({ orders: [syntheticOrder] });
+      return NextResponse.json({
+        orders: [{
+          id: "admin-all-access",
+          amount: 0,
+          type: "note",
+          createdAt: new Date().toISOString(),
+          isAdminAccess: true,
+          items: allNotes.map((n) => ({
+            noteId: n.id,
+            title: n.title,
+            thumbnail: n.thumbnailUrl,
+            price: n.pricePaise / 100,
+          })),
+        }],
+      });
     }
 
-    // ── Customer: return real paid orders ────────────────────────────────────
-    const orders = await db.all(
-      "SELECT * FROM orders WHERE user_id = ? AND status = 'paid' ORDER BY created_at DESC",
-      [user.id]
-    );
+    const paidOrders = await db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.userId, user.id), eq(orders.status, "paid")))
+      .orderBy(desc(orders.createdAt));
 
     const formatted = [];
-
-    for (let order of orders) {
-      const items = await db.all(
-        `SELECT oi.price_paise, n.id, n.title, n.thumbnail_url 
-         FROM order_items oi 
-         JOIN notes n ON oi.note_id = n.id 
-         WHERE oi.order_id = ?`,
-        [order.id]
-      );
+    for (const order of paidOrders) {
+      const items = await db
+        .select({
+          pricePaise: orderItems.pricePaise,
+          id: notes.id,
+          title: notes.title,
+          thumbnailUrl: notes.thumbnailUrl,
+        })
+        .from(orderItems)
+        .innerJoin(notes, eq(orderItems.noteId, notes.id))
+        .where(eq(orderItems.orderId, order.id));
 
       formatted.push({
         id: order.id,
-        amount: order.amount_paise / 100,
+        amount: order.amountPaise / 100,
         type: order.type,
-        createdAt: order.created_at,
+        createdAt: order.createdAt,
         items: items.map((item) => ({
           noteId: item.id,
           title: item.title,
-          thumbnail: item.thumbnail_url,
-          price: item.price_paise / 100,
+          thumbnail: item.thumbnailUrl,
+          price: item.pricePaise / 100,
         })),
       });
     }
 
     return NextResponse.json({ orders: formatted });
   } catch (err) {
+    console.error("[orders/history]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

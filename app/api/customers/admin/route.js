@@ -1,66 +1,72 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
+import { users, orders, userAccess } from "@/lib/schema";
+import { eq, and, gte, like, count, desc, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
+
+
 
 export async function GET(request) {
   try {
-    const db = await getDb();
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
-    const search = searchParams.get("search");
+    const { env } = await getCloudflareContext();
+    const db = getDb(env.DB);
 
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
+    const search = searchParams.get("search");
     const offset = (page - 1) * limit;
 
-    let queryStr = "SELECT id, email, full_name, avatar_url, created_at FROM users WHERE role = 'customer'";
-    let countStr = "SELECT COUNT(*) as count FROM users WHERE role = 'customer'";
-    let params = [];
-
+    // Build where clause dynamically
+    let where = eq(users.role, "customer");
     if (search) {
-      const searchParam = `%${search}%`;
-      queryStr += " AND (email LIKE ? OR full_name LIKE ?)";
-      countStr += " AND (email LIKE ? OR full_name LIKE ?)";
-      params.push(searchParam, searchParam);
+      where = and(where, or(like(users.email, `%${search}%`), like(users.fullName, `%${search}%`)));
     }
 
-    queryStr += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
-    
-    const countRow = await db.get(countStr, params);
-    const count = countRow.count;
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(users)
+      .where(where);
 
-    const customers = await db.all(queryStr, [...params, limit, offset]);
+    const customers = await db
+      .select({ id: users.id, email: users.email, fullName: users.fullName, avatarUrl: users.avatarUrl, createdAt: users.createdAt })
+      .from(users)
+      .where(where)
+      .orderBy(desc(users.createdAt))
+      .limit(limit)
+      .offset(offset);
 
+    const now = new Date().toISOString();
     const enriched = [];
-    for (let customer of customers) {
-      const orders = await db.all("SELECT amount_paise FROM orders WHERE user_id = ? AND status = 'paid'", [customer.id]);
-      const totalSpent = orders.reduce((sum, o) => sum + o.amount_paise, 0);
 
-      const accessCountRow = await db.get(
-        "SELECT COUNT(*) as count FROM user_access WHERE user_id = ? AND expires_at >= datetime('now')", 
-        [customer.id]
-      );
+    for (const customer of customers) {
+      const paidOrders = await db
+        .select({ amountPaise: orders.amountPaise })
+        .from(orders)
+        .where(and(eq(orders.userId, customer.id), eq(orders.status, "paid")));
+
+      const totalSpent = paidOrders.reduce((s, o) => s + o.amountPaise, 0);
+
+      const [{ activeCount }] = await db
+        .select({ activeCount: count() })
+        .from(userAccess)
+        .where(and(eq(userAccess.userId, customer.id), gte(userAccess.expiresAt, now)));
 
       enriched.push({
         ...customer,
-        totalPurchases: orders.length,
+        totalPurchases: paidOrders.length,
         totalSpent: totalSpent / 100,
-        activeAccess: accessCountRow.count,
-        status: accessCountRow.count > 0 ? "Active" : "Inactive",
+        activeAccess: activeCount,
+        status: activeCount > 0 ? "Active" : "Inactive",
       });
     }
 
     return NextResponse.json({
       customers: enriched,
-      pagination: {
-        page,
-        limit,
-        total: count,
-        totalPages: Math.ceil(count / limit),
-      },
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("[GET /api/customers/admin]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

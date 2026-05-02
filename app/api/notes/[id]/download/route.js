@@ -1,6 +1,11 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
 import { getUser } from "@/lib/auth";
+import { getPresignedUrl } from "@/lib/r2";
+import { notes, userAccess } from "@/lib/schema";
+import { eq, and, gte, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
+
 
 export async function GET(request, { params }) {
   try {
@@ -11,33 +16,49 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const db = await getDb();
+    const { env } = await getCloudflareContext();
+    const db = getDb(env.DB);
 
-    const access = await db.get(
-      "SELECT id FROM user_access WHERE user_id = ? AND note_id = ? AND expires_at >= datetime('now')",
-      [user.id, id]
-    );
+    if (user.role !== "admin") {
+      const [access] = await db
+        .select({ id: userAccess.id })
+        .from(userAccess)
+        .where(
+          and(
+            eq(userAccess.userId, user.id),
+            eq(userAccess.noteId, id),
+            gte(userAccess.expiresAt, new Date().toISOString())
+          )
+        )
+        .limit(1);
 
-    if (!access && user.role !== 'admin') {
-      return NextResponse.json(
-        { error: "You do not have access to this note. Please purchase it first." },
-        { status: 403 }
-      );
+      if (!access) {
+        return NextResponse.json(
+          { error: "You do not have access to this note. Please purchase it first." },
+          { status: 403 }
+        );
+      }
     }
 
-    const note = await db.get("SELECT file_url, title FROM notes WHERE id = ?", [id]);
+    const [note] = await db
+      .select({ fileUrl: notes.fileUrl, title: notes.title })
+      .from(notes)
+      .where(and(eq(notes.id, id), isNull(notes.deletedAt)))
+      .limit(1);
 
-    if (!note || !note.file_url) {
+    if (!note || !note.fileUrl) {
       return NextResponse.json({ error: "File not available" }, { status: 404 });
     }
 
-    // In a real custom backend without signed URLs, you'd just return the actual URL or a proxy URL
+    const downloadUrl = await getPresignedUrl(note.fileUrl, 300);
+
     return NextResponse.json({
-      downloadUrl: note.file_url,
+      downloadUrl,
       fileName: `${note.title}.pdf`,
-      expiresIn: 3600,
+      expiresIn: 300,
     });
   } catch (err) {
+    console.error("[download]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

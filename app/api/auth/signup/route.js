@@ -1,8 +1,15 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
 import { signToken } from "@/lib/auth";
+import { users } from "@/lib/schema";
+import { eq, count } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+
+
+
+const MAX_USERS = 10_000;
 
 export async function POST(request) {
   try {
@@ -15,46 +22,71 @@ export async function POST(request) {
       );
     }
 
-    const db = await getDb();
-    
-    // Check if user exists
-    const existing = await db.get("SELECT id FROM users WHERE email = ?", [email]);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+    }
+
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters" },
+        { status: 400 }
+      );
+    }
+
+    const { env } = await getCloudflareContext();
+    const db = getDb(env.DB);
+
+    const [{ value: userCount }] = await db
+      .select({ value: count() })
+      .from(users);
+    if (userCount >= MAX_USERS) {
+      return NextResponse.json(
+        { error: "Registration is currently unavailable" },
+        { status: 503 }
+      );
+    }
+
+    const [existing] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
     if (existing) {
       return NextResponse.json({ error: "User already exists" }, { status: 400 });
     }
 
     const id = crypto.randomUUID();
     const hash = await bcrypt.hash(password, 10);
-    
-    // Determine role (for demo purposes, first user or specific emails could be admin, but default to customer)
-    const isAdmin = email === 'admin@academy.com';
-    const role = isAdmin ? 'admin' : 'customer';
 
-    await db.run(
-      "INSERT INTO users (id, email, password_hash, role) VALUES (?, ?, ?, ?)",
-      [id, email, hash, role]
-    );
+    const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim());
+    const role = adminEmails.includes(email) ? "admin" : "customer";
+
+    await db.insert(users).values({
+      id,
+      email,
+      passwordHash: hash,
+      fullName: "",
+      role,
+    });
 
     const token = await signToken({ userId: id, role });
-    
+
     const cookieStore = await cookies();
     cookieStore.set("auth-token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      secure: true,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
 
-    const user = { id, email, role, full_name: '', avatar_url: null };
-
     return NextResponse.json({
       message: "Signed up successfully",
-      user,
+      user: { id, email, role, full_name: "", avatar_url: null },
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("[signup]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -1,51 +1,47 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
+import { bundles, bundleNotes, notes } from "@/lib/schema";
+import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-/**
- * GET /api/bundles — List active bundles (public)
- */
+
+
 export async function GET() {
   try {
-    const db = await getDb();
+    const { env } = await getCloudflareContext();
+    const db = getDb(env.DB);
 
-    const bundlesData = await db.all(
-      "SELECT * FROM bundles WHERE status = 'active' ORDER BY created_at DESC"
-    );
+    const activeBundles = await db
+      .select()
+      .from(bundles)
+      .where(eq(bundles.status, "active"))
+      .orderBy(desc(bundles.createdAt));
 
     const formatted = [];
+    for (const bundle of activeBundles) {
+      const bNotes = await db
+        .select({ id: notes.id, title: notes.title, thumbnailUrl: notes.thumbnailUrl, pricePaise: notes.pricePaise })
+        .from(bundleNotes)
+        .innerJoin(notes, eq(bundleNotes.noteId, notes.id))
+        .where(eq(bundleNotes.bundleId, bundle.id));
 
-    for (let bundle of bundlesData) {
-      const bundleNotes = await db.all(
-        `SELECT n.id, n.title, n.price_paise, n.thumbnail_url 
-         FROM bundle_notes bn 
-         JOIN notes n ON bn.note_id = n.id 
-         WHERE bn.bundle_id = ?`,
-        [bundle.id]
-      );
-      
-      const totalPaise = bundleNotes.reduce(
-        (sum, n) => sum + (n.price_paise || 0),
-        0
-      );
+      const totalPaise = bNotes.reduce((s, n) => s + (n.pricePaise || 0), 0);
 
       formatted.push({
         id: bundle.id,
         name: bundle.name,
         description: bundle.description,
-        discount_percent: bundle.discount_percent,
-        badge_text: bundle.badge_text,
-        notes: bundleNotes.map((n) => ({
-          id: n.id,
-          title: n.title,
-          thumbnail_url: n.thumbnail_url,
-        })),
+        discount_percent: bundle.discountPercent,
+        badge_text: bundle.badgeText,
+        notes: bNotes.map((n) => ({ id: n.id, title: n.title, thumbnail_url: n.thumbnailUrl })),
         original_price: totalPaise / 100,
-        bundle_price: Math.round(totalPaise * (1 - bundle.discount_percent / 100)) / 100,
+        bundle_price: Math.round(totalPaise * (1 - bundle.discountPercent / 100)) / 100,
       });
     }
 
     return NextResponse.json({ bundles: formatted });
   } catch (err) {
+    console.error("[GET /api/bundles]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -1,60 +1,63 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
+import { notes, bundleNotes, bundles } from "@/lib/schema";
+import { eq, and, isNull, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
+
 
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    const db = await getDb();
+    const { env } = await getCloudflareContext();
+    const db = getDb(env.DB);
 
-    // Fetch the note
-    const note = await db.get(
-      "SELECT * FROM notes WHERE id = ? AND status = 'published' AND deleted_at IS NULL",
-      [id]
-    );
+    const [note] = await db
+      .select()
+      .from(notes)
+      .where(and(eq(notes.id, id), eq(notes.status, "published"), isNull(notes.deletedAt)))
+      .limit(1);
 
     if (!note) {
       return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 
-    // Fetch bundles that include this note
-    const bundleLinks = await db.all(
-      "SELECT bundle_id FROM bundle_notes WHERE note_id = ?",
-      [id]
-    );
+    const bundleLinks = await db
+      .select({ bundleId: bundleNotes.bundleId })
+      .from(bundleNotes)
+      .where(eq(bundleNotes.noteId, id));
 
-    let bundles = [];
-    if (bundleLinks && bundleLinks.length > 0) {
-      const bundleIds = bundleLinks.map((bl) => bl.bundle_id);
-      const placeholders = bundleIds.map(() => "?").join(",");
-      
-      const bundlesData = await db.all(
-        `SELECT * FROM bundles WHERE id IN (${placeholders}) AND status = 'active'`,
-        bundleIds
-      );
+    let bundlesOut = [];
 
-      for (let bundle of bundlesData) {
-        const bundleNotes = await db.all(
-          `SELECT n.id, n.title, n.price_paise 
-           FROM bundle_notes bn 
-           JOIN notes n ON bn.note_id = n.id 
-           WHERE bn.bundle_id = ?`,
-          [bundle.id]
-        );
-        
-        const totalPaise = bundleNotes.reduce(
-          (sum, n) => sum + (n.price_paise || 0),
-          0
-        );
+    if (bundleLinks.length > 0) {
+      const bundleIds = bundleLinks.map((bl) => bl.bundleId);
 
-        bundles.push({
+      const activeBundles = await db
+        .select()
+        .from(bundles)
+        .where(and(inArray(bundles.id, bundleIds), eq(bundles.status, "active")));
+
+      for (const bundle of activeBundles) {
+        const bundleNoteRows = await db
+          .select({
+            id: notes.id,
+            title: notes.title,
+            pricePaise: notes.pricePaise,
+          })
+          .from(bundleNotes)
+          .innerJoin(notes, eq(bundleNotes.noteId, notes.id))
+          .where(eq(bundleNotes.bundleId, bundle.id));
+
+        const totalPaise = bundleNoteRows.reduce((s, n) => s + (n.pricePaise || 0), 0);
+
+        bundlesOut.push({
           id: bundle.id,
           name: bundle.name,
           description: bundle.description,
-          discount_percent: bundle.discount_percent,
-          badge_text: bundle.badge_text,
-          notes_count: bundleNotes.length,
+          discount_percent: bundle.discountPercent,
+          badge_text: bundle.badgeText,
+          notes_count: bundleNoteRows.length,
           original_price: totalPaise / 100,
-          bundle_price: Math.round(totalPaise * (1 - bundle.discount_percent / 100)) / 100,
+          bundle_price: Math.round(totalPaise * (1 - bundle.discountPercent / 100)) / 100,
         });
       }
     }
@@ -63,15 +66,13 @@ export async function GET(request, { params }) {
       note: {
         ...note,
         tags: JSON.parse(note.tags || "[]"),
-        price: note.price_paise / 100,
-        originalPrice: note.original_price_paise / 100,
+        price: note.pricePaise / 100,
+        originalPrice: note.originalPricePaise / 100,
       },
-      bundles,
+      bundles: bundlesOut,
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("[GET /api/notes/:id]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -1,10 +1,15 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
+import { orders, orderItems, notes, userAccess } from "@/lib/schema";
+import { eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+
+
 
 export async function POST(request) {
   try {
-    const db = await getDb();
+    const { env } = await getCloudflareContext();
+    const db = getDb(env.DB);
     const body = await request.json();
 
     const razorpayOrderId = body.razorpayOrderId || body.razorpay_order_id;
@@ -15,65 +20,92 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-      .digest("hex");
+    // HMAC signature verification using Web Crypto API (edge-compatible)
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(process.env.RAZORPAY_KEY_SECRET),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const signatureBytes = await crypto.subtle.sign(
+      "HMAC",
+      key,
+      new TextEncoder().encode(`${razorpayOrderId}|${razorpayPaymentId}`)
+    );
+    const expectedSignature = Array.from(new Uint8Array(signatureBytes))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
 
     if (expectedSignature !== razorpaySignature) {
       return NextResponse.json({ error: "Payment verification failed" }, { status: 400 });
     }
 
-    const order = await db.get("SELECT * FROM orders WHERE razorpay_order_id = ?", [razorpayOrderId]);
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.razorpayOrderId, razorpayOrderId))
+      .limit(1);
 
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
+    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
     if (order.status === "paid") {
       return NextResponse.json({ message: "Already verified", alreadyProcessed: true });
     }
 
-    await db.run(
-      "UPDATE orders SET status = 'paid', razorpay_payment_id = ? WHERE id = ?",
-      [razorpayPaymentId, order.id]
-    );
+    await db
+      .update(orders)
+      .set({ status: "paid", razorpayPaymentId })
+      .where(eq(orders.id, order.id));
 
-    const orderItems = await db.all("SELECT note_id FROM order_items WHERE order_id = ?", [order.id]);
-    const noteIds = orderItems.map((item) => item.note_id);
+    const items = await db
+      .select({ noteId: orderItems.noteId })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, order.id));
 
-    const notes = await db.all(`SELECT id, access_duration_months FROM notes WHERE id IN (${noteIds.map(() => '?').join(',')})`, noteIds);
+    const noteIds = items.map((i) => i.noteId).filter(Boolean);
 
-    for (let note of notes) {
+    const noteRows = await db
+      .select({ id: notes.id, accessDurationMonths: notes.accessDurationMonths })
+      .from(notes)
+      .where(inArray(notes.id, noteIds));
+
+    for (const note of noteRows) {
       const expiresAt = new Date();
-      expiresAt.setMonth(expiresAt.getMonth() + (note.access_duration_months || 6));
-      
-      const existingAccess = await db.get(
-        "SELECT id, expires_at FROM user_access WHERE user_id = ? AND note_id = ?",
-        [order.user_id, note.id]
-      );
+      expiresAt.setMonth(expiresAt.getMonth() + (note.accessDurationMonths || 6));
 
-      if (existingAccess) {
-        const currentExpiry = new Date(existingAccess.expires_at);
-        const newExpiry = currentExpiry > new Date() ? new Date(currentExpiry.setMonth(currentExpiry.getMonth() + (note.access_duration_months || 6))) : expiresAt;
-        
-        await db.run(
-          "UPDATE user_access SET expires_at = ? WHERE id = ?",
-          [newExpiry.toISOString(), existingAccess.id]
-        );
+      const [existing] = await db
+        .select({ id: userAccess.id, expiresAt: userAccess.expiresAt })
+        .from(userAccess)
+        .where(eq(userAccess.userId, order.userId))
+        .limit(1);
+
+      if (existing) {
+        const currentExpiry = new Date(existing.expiresAt);
+        const now = new Date();
+        const newExpiry =
+          currentExpiry > now
+            ? new Date(currentExpiry.setMonth(currentExpiry.getMonth() + (note.accessDurationMonths || 6)))
+            : expiresAt;
+
+        await db
+          .update(userAccess)
+          .set({ expiresAt: newExpiry.toISOString() })
+          .where(eq(userAccess.id, existing.id));
       } else {
-        await db.run(
-          "INSERT INTO user_access (id, user_id, note_id, order_id, expires_at) VALUES (?, ?, ?, ?, ?)",
-          [crypto.randomUUID(), order.user_id, note.id, order.id, expiresAt.toISOString()]
-        );
+        await db.insert(userAccess).values({
+          id: crypto.randomUUID(),
+          userId: order.userId,
+          noteId: note.id,
+          orderId: order.id,
+          expiresAt: expiresAt.toISOString(),
+        });
       }
     }
 
-    return NextResponse.json({
-      message: "Payment verified",
-      accessGranted: noteIds.length,
-    });
+    return NextResponse.json({ message: "Payment verified", accessGranted: noteIds.length });
   } catch (err) {
+    console.error("[orders/verify]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

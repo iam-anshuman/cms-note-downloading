@@ -1,50 +1,27 @@
 import Link from "next/link";
-import { getDb } from "@/lib/db";
 import { notFound } from "next/navigation";
 import ImageGallery from "./ImageGallery";
 import PurchaseActions from "./PurchaseActions";
 
+
 async function getNote(id) {
-  const db = await getDb();
-  const note = await db.get("SELECT * FROM notes WHERE id = ? AND status = 'published'", [id]);
-  return note;
+  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/notes/${id}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.note || null;
 }
 
 async function getBundlesForNote(noteId) {
-  const db = await getDb();
-  const bundleLinks = await db.all("SELECT bundle_id FROM bundle_notes WHERE note_id = ?", [noteId]);
-
-  if (!bundleLinks || bundleLinks.length === 0) return [];
-
-  const bundleIds = bundleLinks.map((bl) => bl.bundle_id);
-  const bundlesData = await db.all(
-    `SELECT * FROM bundles WHERE id IN (${bundleIds.map(() => '?').join(',')}) AND status = 'active'`,
-    bundleIds
-  );
-
-  const formattedBundles = [];
-  for (let bundle of bundlesData) {
-    const bundleNotes = await db.all(
-      "SELECT n.price_paise, n.thumbnail_url FROM bundle_notes bn JOIN notes n ON bn.note_id = n.id WHERE bn.bundle_id = ?",
-      [bundle.id]
-    );
-
-    const totalPaise = bundleNotes.reduce((sum, n) => sum + (n.price_paise || 0), 0);
-    formattedBundles.push({
-      id: bundle.id,
-      name: bundle.name,
-      description: bundle.description,
-      discount_percent: bundle.discount_percent,
-      badge_text: bundle.badge_text,
-      notes_count: bundleNotes.length,
-      original_price: totalPaise / 100,
-      bundle_price: Math.round(totalPaise * (1 - bundle.discount_percent / 100)) / 100,
-      thumbnail_url: bundleNotes[0]?.thumbnail_url || null,
-    });
-  }
-
-  return formattedBundles;
+  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/notes/${noteId}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.bundles || [];
 }
+
 
 export default async function NoteDetailPage({ params }) {
   const { id } = await params;

@@ -1,9 +1,14 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
 import { getUser } from "@/lib/auth";
+import { orders, orderItems, notes, userAccess } from "@/lib/schema";
+import { eq, and, inArray, gte } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import Razorpay from "razorpay";
+
+
 
 function getRazorpay() {
-  const Razorpay = require("razorpay");
   return new Razorpay({
     key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET,
@@ -13,42 +18,45 @@ function getRazorpay() {
 export async function POST(request) {
   try {
     const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
-    const db = await getDb();
-    const body = await request.json();
-    const { noteIds } = body;
+    const { env } = await getCloudflareContext();
+    const db = getDb(env.DB);
+    const { noteIds } = await request.json();
 
     if (!noteIds || !Array.isArray(noteIds) || noteIds.length === 0) {
       return NextResponse.json({ error: "noteIds array is required" }, { status: 400 });
     }
 
-    // Fetch all requested notes
-    const placeholders = noteIds.map(() => "?").join(",");
-    const notes = await db.all(
-      `SELECT id, price_paise FROM notes WHERE id IN (${placeholders}) AND status = 'published'`,
-      noteIds
-    );
+    const noteRows = await db
+      .select({ id: notes.id, pricePaise: notes.pricePaise })
+      .from(notes)
+      .where(and(inArray(notes.id, noteIds), eq(notes.status, "published")));
 
-    if (notes.length === 0) {
+    if (noteRows.length === 0) {
       return NextResponse.json({ error: "No valid notes found" }, { status: 404 });
     }
 
-    // Filter out already-owned notes
-    const existingAccess = await db.all(
-      `SELECT note_id FROM user_access WHERE user_id = ? AND note_id IN (${placeholders}) AND expires_at >= datetime('now')`,
-      [user.id, ...noteIds]
-    );
-    const alreadyOwned = new Set(existingAccess.map((a) => a.note_id));
-    const newNotes = notes.filter((n) => !alreadyOwned.has(n.id));
+    const now = new Date().toISOString();
+    const existingAccess = await db
+      .select({ noteId: userAccess.noteId })
+      .from(userAccess)
+      .where(
+        and(
+          eq(userAccess.userId, user.id),
+          inArray(userAccess.noteId, noteIds),
+          gte(userAccess.expiresAt, now)
+        )
+      );
+
+    const alreadyOwned = new Set(existingAccess.map((a) => a.noteId));
+    const newNotes = noteRows.filter((n) => !alreadyOwned.has(n.id));
 
     if (newNotes.length === 0) {
       return NextResponse.json({ error: "You already have access to all selected notes" }, { status: 400 });
     }
 
-    const amountPaise = newNotes.reduce((sum, n) => sum + (n.price_paise || 0), 0);
+    const amountPaise = newNotes.reduce((s, n) => s + (n.pricePaise || 0), 0);
 
     const razorpayOrder = await getRazorpay().orders.create({
       amount: amountPaise,
@@ -58,16 +66,23 @@ export async function POST(request) {
     });
 
     const orderId = crypto.randomUUID();
-    await db.run(
-      "INSERT INTO orders (id, user_id, razorpay_order_id, amount_paise, status, type) VALUES (?, ?, ?, ?, ?, ?)",
-      [orderId, user.id, razorpayOrder.id, amountPaise, "created", "note"]
-    );
+    await db.insert(orders).values({
+      id: orderId,
+      userId: user.id,
+      razorpayOrderId: razorpayOrder.id,
+      amountPaise,
+      status: "created",
+      type: "note",
+    });
 
     for (const note of newNotes) {
-      await db.run(
-        "INSERT INTO order_items (id, order_id, note_id, bundle_id, price_paise) VALUES (?, ?, ?, ?, ?)",
-        [crypto.randomUUID(), orderId, note.id, null, note.price_paise]
-      );
+      await db.insert(orderItems).values({
+        id: crypto.randomUUID(),
+        orderId,
+        noteId: note.id,
+        bundleId: null,
+        pricePaise: note.pricePaise,
+      });
     }
 
     return NextResponse.json({

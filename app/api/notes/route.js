@@ -1,61 +1,72 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
+import { notes } from "@/lib/schema";
+import { eq, and, isNull, desc, like, count } from "drizzle-orm";
 import { NextResponse } from "next/server";
+
+
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "12");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "12")));
     const subject = searchParams.get("subject");
     const search = searchParams.get("search");
-
     const offset = (page - 1) * limit;
 
-    const db = await getDb();
+    const { env } = await getCloudflareContext();
+    const db = getDb(env.DB);
 
-    let queryStr = "SELECT id, title, description, subject, author_name, pages, price_paise, original_price_paise, tags, thumbnail_url, access_duration_months, created_at FROM notes WHERE status = 'published' AND deleted_at IS NULL";
-    let countStr = "SELECT COUNT(*) as count FROM notes WHERE status = 'published' AND deleted_at IS NULL";
-    let params = [];
+    // Build dynamic where conditions
+    let where = and(eq(notes.status, "published"), isNull(notes.deletedAt));
+    if (subject) where = and(where, eq(notes.subject, subject));
+    if (search) where = and(where, like(notes.title, `%${search}%`));
 
-    if (subject) {
-      queryStr += " AND subject = ?";
-      countStr += " AND subject = ?";
-      params.push(subject);
-    }
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(notes)
+      .where(where);
 
-    if (search) {
-      queryStr += " AND title LIKE ?";
-      countStr += " AND title LIKE ?";
-      params.push(`%${search}%`);
-    }
+    const rows = await db
+      .select({
+        id: notes.id,
+        title: notes.title,
+        description: notes.description,
+        subject: notes.subject,
+        authorName: notes.authorName,
+        pages: notes.pages,
+        pricePaise: notes.pricePaise,
+        originalPricePaise: notes.originalPricePaise,
+        tags: notes.tags,
+        thumbnailUrl: notes.thumbnailUrl,
+        accessDurationMonths: notes.accessDurationMonths,
+        createdAt: notes.createdAt,
+      })
+      .from(notes)
+      .where(where)
+      .orderBy(desc(notes.createdAt))
+      .limit(limit)
+      .offset(offset);
 
-    queryStr += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
-    
-    const countRow = await db.get(countStr, params);
-    const count = countRow.count;
-
-    const notes = await db.all(queryStr, [...params, limit, offset]);
-
-    const formattedNotes = notes.map((note) => ({
+    const formatted = rows.map((note) => ({
       ...note,
       tags: JSON.parse(note.tags || "[]"),
-      price: note.price_paise / 100,
-      originalPrice: note.original_price_paise / 100,
+      price: note.pricePaise / 100,
+      originalPrice: note.originalPricePaise / 100,
     }));
 
     return NextResponse.json({
-      notes: formattedNotes,
+      notes: formatted,
       pagination: {
         page,
         limit,
-        total: count,
-        totalPages: Math.ceil(count / limit),
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("[GET /api/notes]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

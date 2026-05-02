@@ -1,75 +1,56 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
 import { getUser } from "@/lib/auth";
-import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { getPresignedUrl } from "@/lib/r2";
+import { notes, userAccess } from "@/lib/schema";
+import { eq, and, gte, isNull } from "drizzle-orm";
+
 
 export async function GET(request, { params }) {
   try {
     const user = await getUser();
     if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+      return Response.json({ error: "Authentication required" }, { status: 401 });
     }
 
     const { id } = await params;
+    const { env } = await getCloudflareContext();
+    const db = getDb(env.DB);
 
-    const db = await getDb();
+    if (user.role !== "admin") {
+      const [access] = await db
+        .select({ id: userAccess.id })
+        .from(userAccess)
+        .where(
+          and(
+            eq(userAccess.userId, user.id),
+            eq(userAccess.noteId, id),
+            gte(userAccess.expiresAt, new Date().toISOString())
+          )
+        )
+        .limit(1);
 
-    // Check the user has valid, non-expired access to this note
-    const access = await db.get(
-      `SELECT ua.id FROM user_access ua 
-       WHERE ua.user_id = ? AND ua.note_id = ? AND ua.expires_at >= datetime('now')`,
-      [user.id, id]
-    );
-
-    // Admins bypass access checks
-    if (!access && user.role !== "admin") {
-      return NextResponse.json({ error: "Access denied. Purchase this note to read it." }, { status: 403 });
+      if (!access) {
+        return Response.json(
+          { error: "Access denied. Purchase this note to read it." },
+          { status: 403 }
+        );
+      }
     }
 
-    // Get note metadata + file path
-    const note = await db.get("SELECT id, title, subject, file_url FROM notes WHERE id = ? AND deleted_at IS NULL", [id]);
-    if (!note) {
-      return NextResponse.json({ error: "Note not found" }, { status: 404 });
-    }
+    const [note] = await db
+      .select({ id: notes.id, title: notes.title, fileUrl: notes.fileUrl })
+      .from(notes)
+      .where(and(eq(notes.id, id), isNull(notes.deletedAt)))
+      .limit(1);
 
-    if (!note.file_url) {
-      return NextResponse.json({ error: "No file attached to this note" }, { status: 404 });
-    }
+    if (!note) return Response.json({ error: "Note not found" }, { status: 404 });
+    if (!note.fileUrl) return Response.json({ error: "No file attached" }, { status: 404 });
 
-    // Resolve file on disk (file_url is stored as e.g. /uploads/filename.pdf)
-    const filePath = path.join(process.cwd(), "public", note.file_url);
-
-    if (!fs.existsSync(filePath)) {
-      return NextResponse.json({ error: "File not found on server" }, { status: 404 });
-    }
-
-    const fileBuffer = fs.readFileSync(filePath);
-    const ext = path.extname(note.file_url).toLowerCase();
-    const contentTypeMap = {
-      ".pdf": "application/pdf",
-      ".png": "image/png",
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".webp": "image/webp",
-    };
-    const contentType = contentTypeMap[ext] || "application/octet-stream";
-
-    return new Response(fileBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type": contentType,
-        // Inline display only — no download prompt
-        "Content-Disposition": `inline; filename="${note.title.replace(/[^a-z0-9]/gi, "_")}${ext}"`,
-        // Prevent caching the raw file URL
-        "Cache-Control": "private, no-store",
-        // Block right-click save, iframe breakouts, etc.
-        "X-Frame-Options": "SAMEORIGIN",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+    const signedUrl = await getPresignedUrl(note.fileUrl, 300);
+    return Response.redirect(signedUrl, 302);
   } catch (err) {
     console.error("[note-file]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -1,79 +1,80 @@
-import { NextResponse } from "next/server";
-import { getUser } from "@/lib/auth";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
-import { randomUUID } from "crypto";
+import { getUser } from "@/lib/auth";
+import { cartItems, notes } from "@/lib/schema";
+import { eq, and, asc, count } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
-/**
- * GET /api/cart
- * Returns the authenticated user's cart with full note details.
- */
+
+
+const MAX_CART_ITEMS = 50;
+
 export async function GET() {
   const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ items: [] }); // unauthenticated → empty
-  }
+  if (!user) return NextResponse.json({ items: [] });
 
-  const db = await getDb();
-  const items = await db.all(
-    `SELECT n.id, n.title, n.subject, n.thumbnail_url, n.price_paise, n.original_price_paise
-     FROM cart_items ci
-     JOIN notes n ON n.id = ci.note_id
-     WHERE ci.user_id = ?
-     ORDER BY ci.added_at ASC`,
-    [user.id]
-  );
+  const { env } = await getCloudflareContext();
+  const db = getDb(env.DB);
+
+  const items = await db
+    .select({
+      id: notes.id,
+      title: notes.title,
+      subject: notes.subject,
+      thumbnailUrl: notes.thumbnailUrl,
+      pricePaise: notes.pricePaise,
+      originalPricePaise: notes.originalPricePaise,
+    })
+    .from(cartItems)
+    .innerJoin(notes, eq(cartItems.noteId, notes.id))
+    .where(eq(cartItems.userId, user.id))
+    .orderBy(asc(cartItems.addedAt));
 
   return NextResponse.json({ items });
 }
 
-/**
- * POST /api/cart
- * Body: { noteId: string }
- * Adds a note to the cart. Idempotent — duplicate adds are ignored.
- */
 export async function POST(request) {
   const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
+  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const { noteId } = await request.json();
-  if (!noteId) {
-    return NextResponse.json({ error: "noteId is required" }, { status: 400 });
+  if (!noteId) return NextResponse.json({ error: "noteId is required" }, { status: 400 });
+
+  const { env } = await getCloudflareContext();
+  const db = getDb(env.DB);
+
+  const [note] = await db
+    .select({ id: notes.id })
+    .from(notes)
+    .where(and(eq(notes.id, noteId), eq(notes.status, "published")))
+    .limit(1);
+
+  if (!note) return NextResponse.json({ error: "Note not found" }, { status: 404 });
+
+  const [{ value: cartCount }] = await db
+    .select({ value: count() })
+    .from(cartItems)
+    .where(eq(cartItems.userId, user.id));
+
+  if (cartCount >= MAX_CART_ITEMS) {
+    return NextResponse.json({ error: "Cart item limit reached" }, { status: 429 });
   }
 
-  const db = await getDb();
-
-  // Verify the note exists and is published
-  const note = await db.get(
-    "SELECT id FROM notes WHERE id = ? AND status = 'published'",
-    [noteId]
-  );
-  if (!note) {
-    return NextResponse.json({ error: "Note not found" }, { status: 404 });
-  }
-
-  // INSERT OR IGNORE handles the UNIQUE(user_id, note_id) constraint gracefully
-  await db.run(
-    "INSERT OR IGNORE INTO cart_items (id, user_id, note_id) VALUES (?, ?, ?)",
-    [randomUUID(), user.id, noteId]
-  );
+  await db
+    .insert(cartItems)
+    .values({ id: crypto.randomUUID(), userId: user.id, noteId })
+    .onConflictDoNothing();
 
   return NextResponse.json({ ok: true });
 }
 
-/**
- * DELETE /api/cart
- * Body: { noteId?: string }
- * Omit noteId to clear the entire cart; provide noteId to remove a single item.
- */
 export async function DELETE(request) {
   const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
+  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const db = await getDb();
+  const { env } = await getCloudflareContext();
+  const db = getDb(env.DB);
+
   let noteId;
   try {
     ({ noteId } = await request.json());
@@ -82,12 +83,11 @@ export async function DELETE(request) {
   }
 
   if (noteId) {
-    await db.run(
-      "DELETE FROM cart_items WHERE user_id = ? AND note_id = ?",
-      [user.id, noteId]
-    );
+    await db
+      .delete(cartItems)
+      .where(and(eq(cartItems.userId, user.id), eq(cartItems.noteId, noteId)));
   } else {
-    await db.run("DELETE FROM cart_items WHERE user_id = ?", [user.id]);
+    await db.delete(cartItems).where(eq(cartItems.userId, user.id));
   }
 
   return NextResponse.json({ ok: true });

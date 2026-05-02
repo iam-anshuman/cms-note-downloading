@@ -1,39 +1,17 @@
-import { getDb } from "@/lib/db";
-
 export const metadata = {
   title: "Customer Registry — The Academy CMS",
 };
 
 async function getCustomers() {
-  const db = await getDb();
-  const customers = await db.all(
-    "SELECT id, email, full_name, avatar_url, created_at FROM users WHERE role = 'customer' ORDER BY created_at DESC"
-  );
-
-  if (!customers) return [];
-
-  const enriched = await Promise.all(
-    customers.map(async (customer) => {
-      const orders = await db.all("SELECT amount_paise FROM orders WHERE user_id = ? AND status = 'paid'", [customer.id]);
-      const access = await db.all("SELECT id FROM user_access WHERE user_id = ? AND expires_at >= datetime('now')", [customer.id]);
-
-      const totalSpent = (orders || []).reduce(
-        (sum, o) => sum + o.amount_paise,
-        0
-      );
-
-      return {
-        ...customer,
-        totalPurchases: orders?.length || 0,
-        totalSpent: totalSpent / 100,
-        activeAccess: access?.length || 0,
-        status: (access?.length || 0) > 0 ? "Active" : "Inactive",
-      };
-    })
-  );
-
-  return enriched;
+  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/customers/admin?limit=100`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.customers || [];
 }
+
+
 
 export default async function CustomersPage() {
   const customers = await getCustomers();

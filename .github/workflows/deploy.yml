@@ -23,17 +23,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build for Cloudflare Workers
+      - name: Build for Cloudflare Workers (Linux)
         run: npm run build:cf
         env:
-          # These are public vars needed at build time
           NEXT_PUBLIC_APP_URL: https://cms-notes.anshumant72.workers.dev
           NEXT_PUBLIC_RAZORPAY_KEY_ID: ${{ secrets.NEXT_PUBLIC_RAZORPAY_KEY_ID }}
-
-      - name: Apply D1 Migrations (remote)
-        run: npx wrangler d1 migrations apply cms-notes-db --remote
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
       - name: Deploy to Cloudflare Workers
         run: npx wrangler deploy

@@ -6,7 +6,7 @@ import { notes, userAccess } from "@/lib/schema";
 import { eq, and, gte, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-
+ 
 export async function GET(request, { params }) {
   try {
     const { id } = await params;

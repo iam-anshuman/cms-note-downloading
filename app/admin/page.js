@@ -1,22 +1,49 @@
-import { getUser } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { count, eq, sum } from "drizzle-orm";
+import { getDb } from "@/lib/db";
+import { bundles, notes, orders, users } from "@/lib/schema";
 
 export const metadata = {
   title: "Dashboard — The Academy CMS",
   description: "Overview of your academic content platform performance.",
 };
 
+export const dynamic = "force-dynamic";
+
 async function getStats() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/dashboard/admin`, {
-    cache: "no-store",
-  });
-  if (!res.ok) return { revenue: 0, orders: 0, customers: 0, notes: 0 };
-  const data = await res.json();
+  const { env } = await getCloudflareContext({ async: true });
+  const db = getDb(env.DB);
+
+  const [revenueRes, ordersRes, customersRes, notesRes, bundlesRes] =
+    await Promise.all([
+      db
+        .select({ total: sum(orders.amountPaise) })
+        .from(orders)
+        .where(eq(orders.status, "paid")),
+      db
+        .select({ value: count() })
+        .from(orders)
+        .where(eq(orders.status, "paid")),
+      db
+        .select({ value: count() })
+        .from(users)
+        .where(eq(users.role, "customer")),
+      db
+        .select({ value: count() })
+        .from(notes)
+        .where(eq(notes.status, "published")),
+      db
+        .select({ value: count() })
+        .from(bundles)
+        .where(eq(bundles.status, "active")),
+    ]);
+
   return {
-    revenue: data.totalRevenue || 0,
-    orders: data.totalOrders || 0,
-    customers: data.totalCustomers || 0,
-    notes: data.totalNotes || 0,
+    revenue: (Number(revenueRes[0]?.total) || 0) / 100,
+    orders: ordersRes[0]?.value || 0,
+    customers: customersRes[0]?.value || 0,
+    notes: notesRes[0]?.value || 0,
+    bundles: bundlesRes[0]?.value || 0,
   };
 }
 
@@ -41,13 +68,10 @@ export default async function AdminDashboardPage() {
       .slice(0, 2);
 
   const timeAgo = (dateStr) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins} Min${mins !== 1 ? "s" : ""} Ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours} Hour${hours !== 1 ? "s" : ""} Ago`;
-    const days = Math.floor(hours / 24);
-    return `${days} Day${days !== 1 ? "s" : ""} Ago`;
+    return new Date(dateStr).toLocaleString("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
   };
 
   const avatarBgs = [

@@ -1,7 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
 import { getUser } from "@/lib/auth";
-import { getPresignedUrl } from "@/lib/r2";
 import { notes, userAccess } from "@/lib/schema";
 import { eq, and, gte, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -50,12 +49,11 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "File not available" }, { status: 404 });
     }
 
-    const downloadUrl = await getPresignedUrl(note.fileUrl, 300);
+    const downloadUrl = `/api/notes/${id}/file?download=1`;
 
     return NextResponse.json({
       downloadUrl,
       fileName: `${note.title}.pdf`,
-      expiresIn: 300,
     });
   } catch (err) {
     console.error("[download]", err);

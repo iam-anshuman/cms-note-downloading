@@ -1,7 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
 import { getUser } from "@/lib/auth";
-import { getPresignedUrl } from "@/lib/r2";
+import { getFromR2 } from "@/lib/r2";
 import { notes, userAccess } from "@/lib/schema";
 import { eq, and, gte, isNull } from "drizzle-orm";
 
@@ -47,8 +47,25 @@ export async function GET(request, { params }) {
     if (!note) return Response.json({ error: "Note not found" }, { status: 404 });
     if (!note.fileUrl) return Response.json({ error: "No file attached" }, { status: 404 });
 
-    const signedUrl = await getPresignedUrl(note.fileUrl, 300);
-    return Response.redirect(signedUrl, 302);
+    const object = await getFromR2(note.fileUrl);
+    if (!object) return Response.json({ error: "File not found" }, { status: 404 });
+
+    const url = new URL(request.url);
+    const contentType =
+      object.httpMetadata?.contentType || "application/octet-stream";
+    const headers = new Headers();
+    headers.set("Content-Type", contentType);
+    headers.set("Cache-Control", "private, no-store");
+    headers.set("Content-Length", object.size.toString());
+
+    if (url.searchParams.get("download") === "1") {
+      const filename = `${note.title || "note"}.pdf`.replace(/["\r\n]/g, "");
+      headers.set("Content-Disposition", `attachment; filename="${filename}"`);
+    } else {
+      headers.set("Content-Disposition", "inline");
+    }
+
+    return new Response(object.body, { headers });
   } catch (err) {
     console.error("[note-file]", err);
     return Response.json({ error: "Internal server error" }, { status: 500 });

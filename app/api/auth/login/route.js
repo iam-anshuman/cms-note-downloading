@@ -43,7 +43,7 @@ export async function POST(request) {
     const cookieStore = await cookies();
     cookieStore.set("auth-token", token, {
       httpOnly: true,
-      secure: true,
+      secure: new URL(request.url).protocol === "https:",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7,
       path: "/",

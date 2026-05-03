@@ -5,20 +5,20 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 const CartContext = createContext(null);
 
 export function CartProvider({ children }) {
-  const [items, setItems] = useState([]);
-  const [isOpen, setIsOpen] = useState(false);
-
-  // Load from localStorage on mount
-  useEffect(() => {
+  const [items, setItems] = useState(() => {
+    if (typeof window === "undefined") return [];
     try {
-      const saved = localStorage.getItem("cart");
-      if (saved) setItems(JSON.parse(saved));
-    } catch {}
-  }, []);
+      const saved = window.localStorage.getItem("cart");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isOpen, setIsOpen] = useState(false);
 
   // Persist to localStorage whenever items change
   useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(items));
+    window.localStorage.setItem("cart", JSON.stringify(items));
   }, [items]);
 
   const addItem = useCallback((note) => {

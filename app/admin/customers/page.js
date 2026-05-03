@@ -1,14 +1,62 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { and, count, desc, eq, gte } from "drizzle-orm";
+import { getDb } from "@/lib/db";
+import { orders, userAccess, users } from "@/lib/schema";
+
 export const metadata = {
   title: "Customer Registry — The Academy CMS",
 };
 
+export const dynamic = "force-dynamic";
+
 async function getCustomers() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/customers/admin?limit=100`, {
-    cache: "no-store",
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.customers || [];
+  const { env } = await getCloudflareContext({ async: true });
+  const db = getDb(env.DB);
+
+  const rows = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      fullName: users.fullName,
+      avatarUrl: users.avatarUrl,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(eq(users.role, "customer"))
+    .orderBy(desc(users.createdAt))
+    .limit(100);
+
+  const now = new Date().toISOString();
+  return Promise.all(
+    rows.map(async (customer) => {
+      const paidOrders = await db
+        .select({ amountPaise: orders.amountPaise })
+        .from(orders)
+        .where(and(eq(orders.userId, customer.id), eq(orders.status, "paid")));
+
+      const [{ activeCount }] = await db
+        .select({ activeCount: count() })
+        .from(userAccess)
+        .where(
+          and(eq(userAccess.userId, customer.id), gte(userAccess.expiresAt, now))
+        );
+
+      const totalSpent =
+        paidOrders.reduce((sum, order) => sum + order.amountPaise, 0) / 100;
+
+      return {
+        id: customer.id,
+        email: customer.email,
+        full_name: customer.fullName,
+        avatar_url: customer.avatarUrl,
+        created_at: customer.createdAt,
+        totalPurchases: paidOrders.length,
+        totalSpent,
+        activeAccess: activeCount,
+        status: activeCount > 0 ? "Active" : "Inactive",
+      };
+    })
+  );
 }
 
 

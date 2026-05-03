@@ -152,7 +152,6 @@ function EditModal({ note, onClose, onSaved }) {
 export default function AdminNotesPage() {
   const router = useRouter();
   const [notes, setNotes] = useState([]);
-  const [salesData, setSalesData] = useState({});
   const [loading, setLoading] = useState(true);
   const [editingNote, setEditingNote] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null); // note id
@@ -160,10 +159,7 @@ export default function AdminNotesPage() {
 
   useEffect(() => {
     async function load() {
-      const [notesRes, salesRes] = await Promise.all([
-        fetch("/api/notes/admin?all=1"),
-        fetch("/api/dashboard/stats").catch(() => ({ ok: false })),
-      ]);
+      const notesRes = await fetch("/api/notes/admin?all=1");
       const notesData = await notesRes.json();
       setNotes(notesData.notes || []);
       setLoading(false);

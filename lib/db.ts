@@ -8,7 +8,7 @@ let client: Client | null = null;
 let initialized = false;
 
 const isVercel = !!process.env.VERCEL;
-// Use D1 only in Vercel production, not local dev (DNS might be blocked locally)
+// Use D1 only on Vercel, not locally (DNS issues with D1 on some machines)
 const libsqlUrl = isVercel ? process.env.LIBSQL_URL : undefined;
 const libsqlAuthToken = isVercel ? process.env.LIBSQL_AUTH_TOKEN : undefined;
 

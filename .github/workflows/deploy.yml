@@ -32,6 +32,9 @@ jobs:
           RAZORPAY_KEY_ID: ${{ secrets.NEXT_PUBLIC_RAZORPAY_KEY_ID }}
           RAZORPAY_KEY_SECRET: ${{ secrets.NEXT_PUBLIC_RAZORPAY_KEY_SECRET }}
 
+      - name: Restore wrangler config
+        run: mv wrangler.toml.bak wrangler.toml
+
       - name: Deploy to Cloudflare Workers
         run: npx wrangler deploy
         env:

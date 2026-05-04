@@ -1,8 +1,14 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "github": {
-    "enabled": false
+    "enabled": false,
+    "autoJobCancelation": false
   },
-  "framework": null,
-  "buildCommand": "echo 'Deployment disabled' && exit 0",
-  "outputDirectory": "."
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static"
+    }
+  ],
+  "buildCommand": "exit 1"
 }

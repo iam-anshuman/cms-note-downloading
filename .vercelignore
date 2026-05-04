@@ -1,0 +1,6 @@
+wrangler.toml
+wrangler.jsonc
+.vercelignore
+open-next.config.ts
+.open-next/
+drizzle/

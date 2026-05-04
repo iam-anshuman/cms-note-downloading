@@ -8,8 +8,9 @@ let client: Client | null = null;
 let initialized = false;
 
 const isVercel = !!process.env.VERCEL;
-const libsqlUrl = process.env.LIBSQL_URL;
-const libsqlAuthToken = process.env.LIBSQL_AUTH_TOKEN;
+// Use D1 only in Vercel production, not local dev (DNS might be blocked locally)
+const libsqlUrl = isVercel ? process.env.LIBSQL_URL : undefined;
+const libsqlAuthToken = isVercel ? process.env.LIBSQL_AUTH_TOKEN : undefined;
 
 function createLocalClient() {
   return createClient({
@@ -18,10 +19,18 @@ function createLocalClient() {
 }
 
 function createRemoteClient() {
-  return createClient({
-    url: libsqlUrl || process.env.DATABASE_URL || "file:./data/cms.db",
-    authToken: libsqlAuthToken || process.env.DATABASE_AUTH_TOKEN,
-  });
+  console.log('[DB] Creating remote client with token:', libsqlAuthToken?.substring(0, 10) + '...');
+  try {
+    const client = createClient({
+      url: libsqlUrl || process.env.DATABASE_URL || "file:./data/cms.db",
+      authToken: libsqlAuthToken || process.env.DATABASE_AUTH_TOKEN,
+    });
+    console.log('[DB] Remote client created successfully');
+    return client;
+  } catch (err) {
+    console.error('[DB] Failed to create remote client:', err);
+    throw err;
+  }
 }
 
 function createD1Client(d1Binding: any) {
@@ -32,11 +41,15 @@ function createD1Client(d1Binding: any) {
 }
 
 export function getDb(env?: any) {
+  // Debug: log what we're using
+  console.log('[DB] libsqlUrl:', !!libsqlUrl, 'libsqlAuthToken:', !!libsqlAuthToken);
+  
   if (client && db) return { client: db, raw: client };
 
   // Skip remote during build - use local SQLite
   const isBuildTime = process.env.NEXT_PHASE === 'build' || process.env.NEXT_PHASE === 'phase-production-build';
   if (isBuildTime) {
+    console.log('[DB] Using local client (build time)');
     client = createLocalClient();
     db = drizzle(client, { schema });
     return { client: db, raw: client };
@@ -44,13 +57,16 @@ export function getDb(env?: any) {
 
   // Check for Vercel D1 binding (env.DB) - used in Vercel production
   if (env?.DB) {
+    console.log('[DB] Using D1 binding');
     client = createD1Client(env.DB);
   } 
-  // Use remote D1 only in production
-  else if (isVercel && libsqlUrl) {
+  // Use remote D1 when LIBSQL_URL is set (works for both local dev and Vercel)
+  else if (libsqlUrl && libsqlAuthToken) {
+    console.log('[DB] Using remote D1 client, URL:', libsqlUrl);
     client = createRemoteClient();
   }
   else {
+    console.log('[DB] Using local client');
     client = createLocalClient();
   }
   db = drizzle(client, { schema });
@@ -196,10 +212,16 @@ async function initDb() {
 initDb().catch(console.error);
 
 export async function dbAll(sql: string, params: (string | number | null)[] = []) {
-  await initDb();
-  const { raw } = getDb();
-  const result = await raw.execute({ sql, args: params });
-  return result.rows;
+  try {
+    await initDb();
+    const { raw } = getDb();
+    const result = await raw.execute({ sql, args: params });
+    return result.rows;
+  } catch (err: any) {
+    console.error('[DB] dbAll error:', err.message || err);
+    if (err.cause) console.error('[DB] Cause:', err.cause);
+    throw err;
+  }
 }
 
 export async function dbGet(sql: string, params: (string | number | null)[] = []) {

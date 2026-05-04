@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbAll } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
@@ -9,11 +9,8 @@ export async function GET() {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const db = await getDb();
-
-    // ── Admin: return ALL published notes as a single synthetic "All Access" order
     if (user.role === "admin") {
-      const notes = await db.all(
+      const notes = await dbAll(
         `SELECT id, title, thumbnail_url, price_paise
          FROM notes
          WHERE status = 'published'
@@ -41,8 +38,7 @@ export async function GET() {
       return NextResponse.json({ orders: [syntheticOrder] });
     }
 
-    // ── Customer: return real paid orders ────────────────────────────────────
-    const orders = await db.all(
+    const orders = await dbAll(
       "SELECT * FROM orders WHERE user_id = ? AND status = 'paid' ORDER BY created_at DESC",
       [user.id]
     );
@@ -50,7 +46,7 @@ export async function GET() {
     const formatted = [];
 
     for (let order of orders) {
-      const items = await db.all(
+      const items = await dbAll(
         `SELECT oi.price_paise, n.id, n.title, n.thumbnail_url 
          FROM order_items oi 
          JOIN notes n ON oi.note_id = n.id 

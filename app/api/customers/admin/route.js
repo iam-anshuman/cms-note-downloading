@@ -1,9 +1,8 @@
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
   try {
-    const db = await getDb();
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
@@ -24,17 +23,17 @@ export async function GET(request) {
 
     queryStr += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
     
-    const countRow = await db.get(countStr, params);
+    const countRow = await dbGet(countStr, params);
     const count = countRow.count;
 
-    const customers = await db.all(queryStr, [...params, limit, offset]);
+    const customers = await dbAll(queryStr, [...params, limit, offset]);
 
     const enriched = [];
     for (let customer of customers) {
-      const orders = await db.all("SELECT amount_paise FROM orders WHERE user_id = ? AND status = 'paid'", [customer.id]);
+      const orders = await dbAll("SELECT amount_paise FROM orders WHERE user_id = ? AND status = 'paid'", [customer.id]);
       const totalSpent = orders.reduce((sum, o) => sum + o.amount_paise, 0);
 
-      const accessCountRow = await db.get(
+      const accessCountRow = await dbGet(
         "SELECT COUNT(*) as count FROM user_access WHERE user_id = ? AND expires_at >= datetime('now')", 
         [customer.id]
       );

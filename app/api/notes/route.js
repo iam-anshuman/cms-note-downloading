@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
@@ -10,8 +10,6 @@ export async function GET(request) {
     const search = searchParams.get("search");
 
     const offset = (page - 1) * limit;
-
-    const db = await getDb();
 
     let queryStr = "SELECT id, title, description, subject, author_name, pages, price_paise, original_price_paise, tags, thumbnail_url, access_duration_months, created_at FROM notes WHERE status = 'published' AND deleted_at IS NULL";
     let countStr = "SELECT COUNT(*) as count FROM notes WHERE status = 'published' AND deleted_at IS NULL";
@@ -31,10 +29,10 @@ export async function GET(request) {
 
     queryStr += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
     
-    const countRow = await db.get(countStr, params);
+    const countRow = await dbGet(countStr, params);
     const count = countRow.count;
 
-    const notes = await db.all(queryStr, [...params, limit, offset]);
+    const notes = await dbAll(queryStr, [...params, limit, offset]);
 
     const formattedNotes = notes.map((note) => ({
       ...note,

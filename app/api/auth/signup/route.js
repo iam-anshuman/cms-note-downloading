@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbGet, dbRun } from "@/lib/db";
 import { signToken } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
@@ -15,10 +15,7 @@ export async function POST(request) {
       );
     }
 
-    const db = await getDb();
-    
-    // Check if user exists
-    const existing = await db.get("SELECT id FROM users WHERE email = ?", [email]);
+    const existing = await dbGet("SELECT id FROM users WHERE email = ?", [email]);
     if (existing) {
       return NextResponse.json({ error: "User already exists" }, { status: 400 });
     }
@@ -26,11 +23,10 @@ export async function POST(request) {
     const id = crypto.randomUUID();
     const hash = await bcrypt.hash(password, 10);
     
-    // Determine role (for demo purposes, first user or specific emails could be admin, but default to customer)
     const isAdmin = email === 'admin@academy.com';
     const role = isAdmin ? 'admin' : 'customer';
 
-    await db.run(
+    await dbRun(
       "INSERT INTO users (id, email, password_hash, role) VALUES (?, ?, ?, ?)",
       [id, email, hash, role]
     );

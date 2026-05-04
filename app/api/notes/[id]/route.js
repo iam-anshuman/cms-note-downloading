@@ -1,13 +1,11 @@
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    const db = await getDb();
 
-    // Fetch the note
-    const note = await db.get(
+    const note = await dbGet(
       "SELECT * FROM notes WHERE id = ? AND status = 'published' AND deleted_at IS NULL",
       [id]
     );
@@ -16,8 +14,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 
-    // Fetch bundles that include this note
-    const bundleLinks = await db.all(
+    const bundleLinks = await dbAll(
       "SELECT bundle_id FROM bundle_notes WHERE note_id = ?",
       [id]
     );
@@ -27,13 +24,13 @@ export async function GET(request, { params }) {
       const bundleIds = bundleLinks.map((bl) => bl.bundle_id);
       const placeholders = bundleIds.map(() => "?").join(",");
       
-      const bundlesData = await db.all(
+      const bundlesData = await dbAll(
         `SELECT * FROM bundles WHERE id IN (${placeholders}) AND status = 'active'`,
         bundleIds
       );
 
       for (let bundle of bundlesData) {
-        const bundleNotes = await db.all(
+        const bundleNotes = await dbAll(
           `SELECT n.id, n.title, n.price_paise 
            FROM bundle_notes bn 
            JOIN notes n ON bn.note_id = n.id 

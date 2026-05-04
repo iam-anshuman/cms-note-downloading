@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import fs from "fs";
+import { uploadFile, getContentType } from "@/lib/storage";
 
 export async function POST(request) {
   try {
@@ -29,25 +27,19 @@ export async function POST(request) {
     const ext = file.name.split(".").pop();
     const safeName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "-").substring(0, 50);
     const fileName = `${safeName}-${Date.now()}.${ext}`;
-    const relativePath = `uploads/${noteId || "general"}/${fileName}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads", noteId || "general");
-    
-    if (!fs.existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
 
-    const filePath = path.join(uploadDir, fileName);
-    
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    await writeFile(filePath, buffer);
+    const { path, url } = await uploadFile(buffer, fileName, file.type, noteId || undefined);
 
     return NextResponse.json({
-      path: `/${relativePath}`,
+      path: path,
+      url: url,
       message: "File uploaded successfully",
     });
   } catch (err) {
+    console.error("[upload]", err);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -1,0 +1,16 @@
+name = "cms-note-downloading"
+compatibility_date = "2024-01-01"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "cms-db"
+database_id = "your-d1-database-id-here"
+
+# R2 Bucket
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "cms-notes-files"
+
+[vars]
+NEXT_PUBLIC_APP_URL = "https://your-app.vercel.app"

@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbGet } from "@/lib/db";
 import { signToken } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
@@ -15,8 +15,7 @@ export async function POST(request) {
       );
     }
 
-    const db = await getDb();
-    const user = await db.get("SELECT * FROM users WHERE email = ?", [email]);
+    const user = await dbGet("SELECT * FROM users WHERE email = ?", [email]);
 
     if (!user) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });

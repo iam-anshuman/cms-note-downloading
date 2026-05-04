@@ -1,8 +1,7 @@
-import { getDb } from "@/lib/db";
+import { dbGet } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { getFileBuffer } from "@/lib/storage";
 
 export async function GET(request, { params }) {
   try {
@@ -13,22 +12,17 @@ export async function GET(request, { params }) {
 
     const { id } = await params;
 
-    const db = await getDb();
-
-    // Check the user has valid, non-expired access to this note
-    const access = await db.get(
+    const access = await dbGet(
       `SELECT ua.id FROM user_access ua 
        WHERE ua.user_id = ? AND ua.note_id = ? AND ua.expires_at >= datetime('now')`,
       [user.id, id]
     );
 
-    // Admins bypass access checks
     if (!access && user.role !== "admin") {
       return NextResponse.json({ error: "Access denied. Purchase this note to read it." }, { status: 403 });
     }
 
-    // Get note metadata + file path
-    const note = await db.get("SELECT id, title, subject, file_url FROM notes WHERE id = ? AND deleted_at IS NULL", [id]);
+    const note = await dbGet("SELECT id, title, subject, file_url FROM notes WHERE id = ? AND deleted_at IS NULL", [id]);
     if (!note) {
       return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
@@ -37,21 +31,18 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "No file attached to this note" }, { status: 404 });
     }
 
-    // Resolve file on disk (file_url is stored as e.g. /uploads/filename.pdf)
-    const filePath = path.join(process.cwd(), "public", note.file_url);
-
-    if (!fs.existsSync(filePath)) {
+    const fileBuffer = await getFileBuffer(note.file_url);
+    if (!fileBuffer) {
       return NextResponse.json({ error: "File not found on server" }, { status: 404 });
     }
 
-    const fileBuffer = fs.readFileSync(filePath);
-    const ext = path.extname(note.file_url).toLowerCase();
+    const ext = note.file_url.split(".").pop()?.toLowerCase() || "";
     const contentTypeMap = {
-      ".pdf": "application/pdf",
-      ".png": "image/png",
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".webp": "image/webp",
+      pdf: "application/pdf",
+      png: "image/png",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      webp: "image/webp",
     };
     const contentType = contentTypeMap[ext] || "application/octet-stream";
 
@@ -59,11 +50,8 @@ export async function GET(request, { params }) {
       status: 200,
       headers: {
         "Content-Type": contentType,
-        // Inline display only — no download prompt
-        "Content-Disposition": `inline; filename="${note.title.replace(/[^a-z0-9]/gi, "_")}${ext}"`,
-        // Prevent caching the raw file URL
+        "Content-Disposition": `inline; filename="${note.title.replace(/[^a-z0-9]/gi, "_")}.${ext}"`,
         "Cache-Control": "private, no-store",
-        // Block right-click save, iframe breakouts, etc.
         "X-Frame-Options": "SAMEORIGIN",
         "X-Content-Type-Options": "nosniff",
       },

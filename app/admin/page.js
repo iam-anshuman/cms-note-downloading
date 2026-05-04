@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet } from "@/lib/db";
 
 export const metadata = {
   title: "Dashboard — The Academy CMS",
@@ -6,12 +6,10 @@ export const metadata = {
 };
 
 async function getStats() {
-  const db = await getDb();
-  
-  const ordersRes = await db.all("SELECT amount_paise FROM orders WHERE status = 'paid'");
-  const customersRes = await db.get("SELECT COUNT(*) as count FROM users WHERE role = 'customer'");
-  const notesRes = await db.get("SELECT COUNT(*) as count FROM notes WHERE status = 'published'");
-  const bundlesRes = await db.get("SELECT COUNT(*) as count FROM bundles WHERE status = 'active'");
+  const ordersRes = await dbAll("SELECT amount_paise FROM orders WHERE status = 'paid'");
+  const customersRes = await dbGet("SELECT COUNT(*) as count FROM users WHERE role = 'customer'");
+  const notesRes = await dbGet("SELECT COUNT(*) as count FROM notes WHERE status = 'published'");
+  const bundlesRes = await dbGet("SELECT COUNT(*) as count FROM bundles WHERE status = 'active'");
 
   const revenue = ordersRes.reduce((sum, o) => sum + (o.amount_paise || 0), 0);
 
@@ -24,14 +22,12 @@ async function getStats() {
 }
 
 async function getRecentOrders() {
-  const db = await getDb();
-  
-  const orders = await db.all("SELECT * FROM orders WHERE status = 'paid' ORDER BY created_at DESC LIMIT 5");
+  const orders = await dbAll("SELECT * FROM orders WHERE status = 'paid' ORDER BY created_at DESC LIMIT 5");
   
   const enrichedOrders = [];
   for (const order of orders) {
-    const user = await db.get("SELECT full_name, email FROM users WHERE id = ?", [order.user_id]);
-    const orderItems = await db.all("SELECT n.title FROM order_items oi JOIN notes n ON oi.note_id = n.id WHERE oi.order_id = ?", [order.id]);
+    const user = await dbGet("SELECT full_name, email FROM users WHERE id = ?", [order.user_id]);
+    const orderItems = await dbAll("SELECT n.title FROM order_items oi JOIN notes n ON oi.note_id = n.id WHERE oi.order_id = ?", [order.id]);
     
     enrichedOrders.push({
       ...order,

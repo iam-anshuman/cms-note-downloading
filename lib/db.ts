@@ -1,44 +1,53 @@
-import Database from "better-sqlite3";
-import path from "path";
-import fs from "fs";
+import { drizzle } from "drizzle-orm/libsql";
+import { createClient, type Client } from "@libsql/client";
+import * as schema from "./db/schema";
+import bcrypt from "bcryptjs";
 
-let wrappedDbInstance = null;
+let db: Awaited<ReturnType<typeof drizzle<typeof schema>>> | null = null;
+let client: Client | null = null;
+let initialized = false;
 
-export function getDb() {
-  if (wrappedDbInstance) {
-    return wrappedDbInstance;
-  }
-
-  const dbDir = path.join(process.cwd(), "data");
-
-  if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
-  }
-
-  const dbPath = path.join(dbDir, "cms.db");
-
-  const rawDb = new Database(dbPath);
-
-  // Enable FK enforcement (off by default in SQLite)
-  rawDb.pragma("foreign_keys = ON");
-  rawDb.pragma("journal_mode = WAL");
-
-  initDb(rawDb);
-
-  // Return a wrapper that mimics the asynchronous sqlite driver API
-  // This prevents us from having to rewrite the entire application
-  wrappedDbInstance = {
-    all: async (sql, params = []) => rawDb.prepare(sql).all(params),
-    get: async (sql, params = []) => rawDb.prepare(sql).get(params),
-    run: async (sql, params = []) => rawDb.prepare(sql).run(params),
-    exec: async (sql) => rawDb.exec(sql),
-  };
-
-  return wrappedDbInstance;
+function createLocalClient() {
+  return createClient({
+    url: "file:./data/cms.db",
+  });
 }
 
-function initDb(rawDb) {
-  rawDb.exec(`
+function createD1Client(env: any) {
+  if (env?.DB) {
+    return createClient({
+      url: env.DB.url,
+      authToken: env.DB.token,
+    });
+  }
+  return createLocalClient();
+}
+
+export function getDb(env?: any) {
+  if (client && db) return { client: db, raw: client };
+
+  if (env?.DB) {
+    client = createD1Client(env);
+  } else {
+    client = createLocalClient();
+  }
+  db = drizzle(client, { schema });
+
+  return { client: db, raw: client };
+}
+
+export function isD1Configured(): boolean {
+  return !!(process.env.VERCEL || process.env.__DB__);
+}
+
+export type DB = Awaited<ReturnType<typeof getDb>>;
+
+async function initDb() {
+  if (initialized) return;
+  
+  const { raw } = getDb();
+  
+  await raw.execute(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
@@ -65,6 +74,7 @@ function initDb(rawDb) {
       access_duration_months INTEGER NOT NULL DEFAULT 6,
       status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
       uploaded_by TEXT,
+      deleted_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(uploaded_by) REFERENCES users(id) ON DELETE SET NULL
@@ -138,17 +148,46 @@ function initDb(rawDb) {
     );
   `);
 
-  // Auto-seed an admin user if the table is completely empty
-  const userCount = rawDb.prepare("SELECT COUNT(*) as count FROM users").get();
-  if (userCount.count === 0) {
+  const userCount = await raw.execute("SELECT COUNT(*) as count FROM users");
+  if (userCount.rows[0].count === 0) {
     const adminEmail = process.env.ADMIN_EMAILS || "admin@academy.com";
     const adminPassword = process.env.ADMIN_PASSWORD || "Admin@1234";
-    const bcrypt = require("bcryptjs");
-    const crypto = require("crypto");
     const hash = bcrypt.hashSync(adminPassword, 10);
-    rawDb.prepare("INSERT INTO users (id, email, password_hash, full_name, role) VALUES (?, ?, ?, ?, ?)").run(
-      crypto.randomUUID(), adminEmail, hash, "Admin User", "admin"
-    );
+    const id = crypto.randomUUID();
+    
+    await raw.execute({
+      sql: "INSERT INTO users (id, email, password_hash, full_name, role) VALUES (?, ?, ?, ?, ?)",
+      args: [id, adminEmail, hash, "Admin User", "admin"]
+    });
     console.log(`[DB] Auto-seeded default admin user: ${adminEmail}`);
   }
+
+  initialized = true;
+}
+
+initDb().catch(console.error);
+
+export async function dbAll(sql: string, params: (string | number | null)[] = []) {
+  await initDb();
+  const { raw } = getDb();
+  const result = await raw.execute({ sql, args: params });
+  return result.rows;
+}
+
+export async function dbGet(sql: string, params: (string | number | null)[] = []) {
+  await initDb();
+  const rows = await dbAll(sql, params);
+  return rows[0] || null;
+}
+
+export async function dbRun(sql: string, params: (string | number | null)[] = []) {
+  await initDb();
+  const { raw } = getDb();
+  return await raw.execute({ sql, args: params });
+}
+
+export async function dbExec(sql: string) {
+  await initDb();
+  const { raw } = getDb();
+  return await raw.execute(sql);
 }

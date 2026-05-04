@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbAll, dbRun } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
@@ -17,7 +17,6 @@ export async function POST(request) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const db = await getDb();
     const body = await request.json();
     const { noteIds } = body;
 
@@ -25,9 +24,8 @@ export async function POST(request) {
       return NextResponse.json({ error: "noteIds array is required" }, { status: 400 });
     }
 
-    // Fetch all requested notes
     const placeholders = noteIds.map(() => "?").join(",");
-    const notes = await db.all(
+    const notes = await dbAll(
       `SELECT id, price_paise FROM notes WHERE id IN (${placeholders}) AND status = 'published'`,
       noteIds
     );
@@ -36,8 +34,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "No valid notes found" }, { status: 404 });
     }
 
-    // Filter out already-owned notes
-    const existingAccess = await db.all(
+    const existingAccess = await dbAll(
       `SELECT note_id FROM user_access WHERE user_id = ? AND note_id IN (${placeholders}) AND expires_at >= datetime('now')`,
       [user.id, ...noteIds]
     );
@@ -58,13 +55,13 @@ export async function POST(request) {
     });
 
     const orderId = crypto.randomUUID();
-    await db.run(
+    await dbRun(
       "INSERT INTO orders (id, user_id, razorpay_order_id, amount_paise, status, type) VALUES (?, ?, ?, ?, ?, ?)",
       [orderId, user.id, razorpayOrder.id, amountPaise, "created", "note"]
     );
 
     for (const note of newNotes) {
-      await db.run(
+      await dbRun(
         "INSERT INTO order_items (id, order_id, note_id, bundle_id, price_paise) VALUES (?, ?, ?, ?, ?)",
         [crypto.randomUUID(), orderId, note.id, null, note.price_paise]
       );

@@ -1,20 +1,15 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet, dbRun } from "@/lib/db";
 import { randomUUID } from "crypto";
 
-/**
- * GET /api/cart
- * Returns the authenticated user's cart with full note details.
- */
 export async function GET() {
   const user = await getUser();
   if (!user) {
-    return NextResponse.json({ items: [] }); // unauthenticated → empty
+    return NextResponse.json({ items: [] });
   }
 
-  const db = await getDb();
-  const items = await db.all(
+  const items = await dbAll(
     `SELECT n.id, n.title, n.subject, n.thumbnail_url, n.price_paise, n.original_price_paise
      FROM cart_items ci
      JOIN notes n ON n.id = ci.note_id
@@ -26,11 +21,6 @@ export async function GET() {
   return NextResponse.json({ items });
 }
 
-/**
- * POST /api/cart
- * Body: { noteId: string }
- * Adds a note to the cart. Idempotent — duplicate adds are ignored.
- */
 export async function POST(request) {
   const user = await getUser();
   if (!user) {
@@ -42,10 +32,7 @@ export async function POST(request) {
     return NextResponse.json({ error: "noteId is required" }, { status: 400 });
   }
 
-  const db = await getDb();
-
-  // Verify the note exists and is published
-  const note = await db.get(
+  const note = await dbGet(
     "SELECT id FROM notes WHERE id = ? AND status = 'published'",
     [noteId]
   );
@@ -53,8 +40,7 @@ export async function POST(request) {
     return NextResponse.json({ error: "Note not found" }, { status: 404 });
   }
 
-  // INSERT OR IGNORE handles the UNIQUE(user_id, note_id) constraint gracefully
-  await db.run(
+  await dbRun(
     "INSERT OR IGNORE INTO cart_items (id, user_id, note_id) VALUES (?, ?, ?)",
     [randomUUID(), user.id, noteId]
   );
@@ -62,18 +48,12 @@ export async function POST(request) {
   return NextResponse.json({ ok: true });
 }
 
-/**
- * DELETE /api/cart
- * Body: { noteId?: string }
- * Omit noteId to clear the entire cart; provide noteId to remove a single item.
- */
 export async function DELETE(request) {
   const user = await getUser();
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const db = await getDb();
   let noteId;
   try {
     ({ noteId } = await request.json());
@@ -82,12 +62,12 @@ export async function DELETE(request) {
   }
 
   if (noteId) {
-    await db.run(
+    await dbRun(
       "DELETE FROM cart_items WHERE user_id = ? AND note_id = ?",
       [user.id, noteId]
     );
   } else {
-    await db.run("DELETE FROM cart_items WHERE user_id = ?", [user.id]);
+    await dbRun("DELETE FROM cart_items WHERE user_id = ?", [user.id]);
   }
 
   return NextResponse.json({ ok: true });

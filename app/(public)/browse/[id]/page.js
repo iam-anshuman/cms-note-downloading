@@ -1,30 +1,28 @@
 import Link from "next/link";
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet } from "@/lib/db";
 import { notFound } from "next/navigation";
 import ImageGallery from "./ImageGallery";
 import PurchaseActions from "./PurchaseActions";
 
 async function getNote(id) {
-  const db = await getDb();
-  const note = await db.get("SELECT * FROM notes WHERE id = ? AND status = 'published'", [id]);
+  const note = await dbGet("SELECT * FROM notes WHERE id = ? AND status = 'published'", [id]);
   return note;
 }
 
 async function getBundlesForNote(noteId) {
-  const db = await getDb();
-  const bundleLinks = await db.all("SELECT bundle_id FROM bundle_notes WHERE note_id = ?", [noteId]);
+  const bundleLinks = await dbAll("SELECT bundle_id FROM bundle_notes WHERE note_id = ?", [noteId]);
 
   if (!bundleLinks || bundleLinks.length === 0) return [];
 
   const bundleIds = bundleLinks.map((bl) => bl.bundle_id);
-  const bundlesData = await db.all(
+  const bundlesData = await dbAll(
     `SELECT * FROM bundles WHERE id IN (${bundleIds.map(() => '?').join(',')}) AND status = 'active'`,
     bundleIds
   );
 
   const formattedBundles = [];
   for (let bundle of bundlesData) {
-    const bundleNotes = await db.all(
+    const bundleNotes = await dbAll(
       "SELECT n.price_paise, n.thumbnail_url FROM bundle_notes bn JOIN notes n ON bn.note_id = n.id WHERE bn.bundle_id = ?",
       [bundle.id]
     );

@@ -1,10 +1,9 @@
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet, dbRun } from "@/lib/db";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
 export async function POST(request) {
   try {
-    const db = await getDb();
     const body = await request.json();
 
     const razorpayOrderId = body.razorpayOrderId || body.razorpay_order_id;
@@ -24,7 +23,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Payment verification failed" }, { status: 400 });
     }
 
-    const order = await db.get("SELECT * FROM orders WHERE razorpay_order_id = ?", [razorpayOrderId]);
+    const order = await dbGet("SELECT * FROM orders WHERE razorpay_order_id = ?", [razorpayOrderId]);
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
@@ -34,21 +33,21 @@ export async function POST(request) {
       return NextResponse.json({ message: "Already verified", alreadyProcessed: true });
     }
 
-    await db.run(
+    await dbRun(
       "UPDATE orders SET status = 'paid', razorpay_payment_id = ? WHERE id = ?",
       [razorpayPaymentId, order.id]
     );
 
-    const orderItems = await db.all("SELECT note_id FROM order_items WHERE order_id = ?", [order.id]);
+    const orderItems = await dbAll("SELECT note_id FROM order_items WHERE order_id = ?", [order.id]);
     const noteIds = orderItems.map((item) => item.note_id);
 
-    const notes = await db.all(`SELECT id, access_duration_months FROM notes WHERE id IN (${noteIds.map(() => '?').join(',')})`, noteIds);
+    const notes = await dbAll(`SELECT id, access_duration_months FROM notes WHERE id IN (${noteIds.map(() => '?').join(',')})`, noteIds);
 
     for (let note of notes) {
       const expiresAt = new Date();
       expiresAt.setMonth(expiresAt.getMonth() + (note.access_duration_months || 6));
       
-      const existingAccess = await db.get(
+      const existingAccess = await dbGet(
         "SELECT id, expires_at FROM user_access WHERE user_id = ? AND note_id = ?",
         [order.user_id, note.id]
       );
@@ -57,12 +56,12 @@ export async function POST(request) {
         const currentExpiry = new Date(existingAccess.expires_at);
         const newExpiry = currentExpiry > new Date() ? new Date(currentExpiry.setMonth(currentExpiry.getMonth() + (note.access_duration_months || 6))) : expiresAt;
         
-        await db.run(
+        await dbRun(
           "UPDATE user_access SET expires_at = ? WHERE id = ?",
           [newExpiry.toISOString(), existingAccess.id]
         );
       } else {
-        await db.run(
+        await dbRun(
           "INSERT INTO user_access (id, user_id, note_id, order_id, expires_at) VALUES (?, ?, ?, ?, ?)",
           [crypto.randomUUID(), order.user_id, note.id, order.id, expiresAt.toISOString()]
         );

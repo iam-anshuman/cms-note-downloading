@@ -1,15 +1,13 @@
-import { getDb } from "@/lib/db";
+import { dbGet } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const db = await getDb();
-
-    const revenueRes = await db.get("SELECT SUM(amount_paise) as total FROM orders WHERE status = 'paid'");
-    const ordersRes = await db.get("SELECT COUNT(*) as count FROM orders WHERE status = 'paid'");
-    const customersRes = await db.get("SELECT COUNT(*) as count FROM users WHERE role = 'customer'");
-    const notesRes = await db.get("SELECT COUNT(*) as count FROM notes WHERE status = 'published'");
-    const bundlesRes = await db.get("SELECT COUNT(*) as count FROM bundles WHERE status = 'active'");
+    const revenueRes = await dbGet("SELECT SUM(amount_paise) as total FROM orders WHERE status = 'paid'");
+    const ordersRes = await dbGet("SELECT COUNT(*) as count FROM orders WHERE status = 'paid'");
+    const customersRes = await dbGet("SELECT COUNT(*) as count FROM users WHERE role = 'customer'");
+    const notesRes = await dbGet("SELECT COUNT(*) as count FROM notes WHERE status = 'published'");
+    const bundlesRes = await dbGet("SELECT COUNT(*) as count FROM bundles WHERE status = 'active'");
 
     return NextResponse.json({
       totalRevenue: (revenueRes?.total || 0) / 100,

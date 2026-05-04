@@ -1,16 +1,14 @@
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet, dbRun } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const db = await getDb();
-
-    const bundlesData = await db.all("SELECT * FROM bundles ORDER BY created_at DESC");
+    const bundlesData = await dbAll("SELECT * FROM bundles ORDER BY created_at DESC");
     const formatted = [];
 
     for (let bundle of bundlesData) {
-      const bundleNotes = await db.all(
+      const bundleNotes = await dbAll(
         `SELECT n.id, n.title, n.price_paise 
          FROM bundle_notes bn 
          JOIN notes n ON bn.note_id = n.id 
@@ -39,7 +37,6 @@ export async function POST(request) {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const db = await getDb();
     const body = await request.json();
 
     if (!body.name || !body.noteIds || body.noteIds.length < 2) {
@@ -51,7 +48,7 @@ export async function POST(request) {
 
     const id = crypto.randomUUID();
 
-    await db.run(
+    await dbRun(
       `INSERT INTO bundles (id, name, description, discount_percent, status, badge_text, created_by)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [id, body.name, body.description || "", body.discountPercent || 20, body.status || "draft", body.badgeText || "", user.id]
@@ -59,13 +56,13 @@ export async function POST(request) {
 
     for (let noteId of body.noteIds) {
       const bnId = crypto.randomUUID();
-      await db.run(
+      await dbRun(
         "INSERT INTO bundle_notes (id, bundle_id, note_id) VALUES (?, ?, ?)",
         [bnId, id, noteId]
       );
     }
 
-    const bundle = await db.get("SELECT * FROM bundles WHERE id = ?", [id]);
+    const bundle = await dbGet("SELECT * FROM bundles WHERE id = ?", [id]);
 
     return NextResponse.json({ bundle }, { status: 201 });
   } catch (err) {

@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbGet, dbRun } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
@@ -11,7 +11,6 @@ async function requireAdmin() {
 async function updateNote(request, params) {
   try {
     const { id } = await params;
-    const db = await getDb();
     const body = await request.json();
 
     const updates = [];
@@ -31,7 +30,6 @@ async function updateNote(request, params) {
     if (body.status !== undefined) {
       updates.push("status = ?");
       values.push(body.status);
-      // Restoring a soft-deleted note — clear the deleted_at timestamp
       if (body.status === "published" || body.status === "draft") {
         updates.push("deleted_at = NULL");
       }
@@ -39,9 +37,9 @@ async function updateNote(request, params) {
 
     updates.push("updated_at = CURRENT_TIMESTAMP");
 
-    await db.run(`UPDATE notes SET ${updates.join(", ")} WHERE id = ?`, [...values, id]);
+    await dbRun(`UPDATE notes SET ${updates.join(", ")} WHERE id = ?`, [...values, id]);
 
-    const note = await db.get("SELECT * FROM notes WHERE id = ?", [id]);
+    const note = await dbGet("SELECT * FROM notes WHERE id = ?", [id]);
     if (note) note.tags = JSON.parse(note.tags || "[]");
 
     return NextResponse.json({ note });
@@ -66,15 +64,13 @@ export async function DELETE(request, { params }) {
 
   try {
     const { id } = await params;
-    const db = await getDb();
 
-    const note = await db.get("SELECT id, title FROM notes WHERE id = ? AND deleted_at IS NULL", [id]);
+    const note = await dbGet("SELECT id, title FROM notes WHERE id = ? AND deleted_at IS NULL", [id]);
     if (!note) {
       return NextResponse.json({ error: "Note not found or already deleted" }, { status: 404 });
     }
 
-    // Soft delete — mark as archived + stamp deleted_at, preserve all data
-    await db.run(
+    await dbRun(
       "UPDATE notes SET deleted_at = CURRENT_TIMESTAMP, status = 'archived', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
       [id]
     );

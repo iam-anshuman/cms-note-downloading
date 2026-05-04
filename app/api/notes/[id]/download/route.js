@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbGet } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
@@ -11,9 +11,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const db = await getDb();
-
-    const access = await db.get(
+    const access = await dbGet(
       "SELECT id FROM user_access WHERE user_id = ? AND note_id = ? AND expires_at >= datetime('now')",
       [user.id, id]
     );
@@ -25,7 +23,7 @@ export async function GET(request, { params }) {
       );
     }
 
-    const note = await db.get("SELECT file_url, title FROM notes WHERE id = ?", [id]);
+    const note = await dbGet("SELECT file_url, title FROM notes WHERE id = ?", [id]);
 
     if (!note || !note.file_url) {
       return NextResponse.json({ error: "File not available" }, { status: 404 });

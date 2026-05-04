@@ -1,10 +1,9 @@
-import { getDb } from "@/lib/db";
+import { dbGet, dbRun } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function PUT(request, { params }) {
   try {
     const { id } = await params;
-    const db = await getDb();
     const body = await request.json();
 
     const updates = [];
@@ -17,17 +16,17 @@ export async function PUT(request, { params }) {
     if (body.badgeText !== undefined) { updates.push("badge_text = ?"); values.push(body.badgeText); }
 
     if (updates.length > 0) {
-      await db.run(`UPDATE bundles SET ${updates.join(", ")} WHERE id = ?`, [...values, id]);
+      await dbRun(`UPDATE bundles SET ${updates.join(", ")} WHERE id = ?`, [...values, id]);
     }
 
     if (body.noteIds && Array.isArray(body.noteIds)) {
-      await db.run("DELETE FROM bundle_notes WHERE bundle_id = ?", [id]);
+      await dbRun("DELETE FROM bundle_notes WHERE bundle_id = ?", [id]);
       for (let noteId of body.noteIds) {
-        await db.run("INSERT INTO bundle_notes (id, bundle_id, note_id) VALUES (?, ?, ?)", [crypto.randomUUID(), id, noteId]);
+        await dbRun("INSERT INTO bundle_notes (id, bundle_id, note_id) VALUES (?, ?, ?)", [crypto.randomUUID(), id, noteId]);
       }
     }
 
-    const bundle = await db.get("SELECT * FROM bundles WHERE id = ?", [id]);
+    const bundle = await dbGet("SELECT * FROM bundles WHERE id = ?", [id]);
 
     return NextResponse.json({ bundle });
   } catch (err) {
@@ -38,9 +37,8 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
-    const db = await getDb();
 
-    await db.run("DELETE FROM bundles WHERE id = ?", [id]);
+    await dbRun("DELETE FROM bundles WHERE id = ?", [id]);
 
     return NextResponse.json({ message: "Bundle deleted" });
   } catch (err) {

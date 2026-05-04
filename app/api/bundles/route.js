@@ -1,21 +1,16 @@
-import { getDb } from "@/lib/db";
+import { dbAll } from "@/lib/db";
 import { NextResponse } from "next/server";
 
-/**
- * GET /api/bundles — List active bundles (public)
- */
 export async function GET() {
   try {
-    const db = await getDb();
-
-    const bundlesData = await db.all(
+    const bundlesData = await dbAll(
       "SELECT * FROM bundles WHERE status = 'active' ORDER BY created_at DESC"
     );
 
     const formatted = [];
 
     for (let bundle of bundlesData) {
-      const bundleNotes = await db.all(
+      const bundleNotes = await dbAll(
         `SELECT n.id, n.title, n.price_paise, n.thumbnail_url 
          FROM bundle_notes bn 
          JOIN notes n ON bn.note_id = n.id 

@@ -1,12 +1,11 @@
-import { getDb } from "@/lib/db";
+import { dbAll } from "@/lib/db";
 
 export const metadata = {
   title: "Customer Registry — The Academy CMS",
 };
 
 async function getCustomers() {
-  const db = await getDb();
-  const customers = await db.all(
+  const customers = await dbAll(
     "SELECT id, email, full_name, avatar_url, created_at FROM users WHERE role = 'customer' ORDER BY created_at DESC"
   );
 
@@ -14,8 +13,8 @@ async function getCustomers() {
 
   const enriched = await Promise.all(
     customers.map(async (customer) => {
-      const orders = await db.all("SELECT amount_paise FROM orders WHERE user_id = ? AND status = 'paid'", [customer.id]);
-      const access = await db.all("SELECT id FROM user_access WHERE user_id = ? AND expires_at >= datetime('now')", [customer.id]);
+      const orders = await dbAll("SELECT amount_paise FROM orders WHERE user_id = ? AND status = 'paid'", [customer.id]);
+      const access = await dbAll("SELECT id FROM user_access WHERE user_id = ? AND expires_at >= datetime('now')", [customer.id]);
 
       const totalSpent = (orders || []).reduce(
         (sum, o) => sum + o.amount_paise,

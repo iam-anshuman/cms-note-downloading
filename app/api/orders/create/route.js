@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet, dbRun } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
@@ -17,7 +17,6 @@ export async function POST(request) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const db = await getDb();
     const body = await request.json();
 
     let amountPaise = 0;
@@ -27,10 +26,10 @@ export async function POST(request) {
     if (body.bundleId) {
       orderType = "bundle";
 
-      const bundle = await db.get("SELECT * FROM bundles WHERE id = ? AND status = 'active'", [body.bundleId]);
+      const bundle = await dbGet("SELECT * FROM bundles WHERE id = ? AND status = 'active'", [body.bundleId]);
       if (!bundle) return NextResponse.json({ error: "Bundle not found" }, { status: 404 });
 
-      const bundleNotes = await db.all(
+      const bundleNotes = await dbAll(
         "SELECT n.id, n.price_paise FROM bundle_notes bn JOIN notes n ON bn.note_id = n.id WHERE bn.bundle_id = ?",
         [body.bundleId]
       );
@@ -39,7 +38,7 @@ export async function POST(request) {
       amountPaise = Math.round(totalPaise * (1 - bundle.discount_percent / 100));
       noteIds = bundleNotes.map((n) => n.id);
     } else if (body.noteId) {
-      const note = await db.get("SELECT id, price_paise FROM notes WHERE id = ? AND status = 'published'", [body.noteId]);
+      const note = await dbGet("SELECT id, price_paise FROM notes WHERE id = ? AND status = 'published'", [body.noteId]);
       if (!note) return NextResponse.json({ error: "Note not found" }, { status: 404 });
 
       amountPaise = note.price_paise;
@@ -48,7 +47,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Either noteId or bundleId is required" }, { status: 400 });
     }
 
-    const existingAccess = await db.all(
+    const existingAccess = await dbAll(
       `SELECT note_id FROM user_access WHERE user_id = ? AND note_id IN (${noteIds.map(() => '?').join(',')}) AND expires_at >= datetime('now')`,
       [user.id, ...noteIds]
     );
@@ -68,13 +67,13 @@ export async function POST(request) {
     });
 
     const orderId = crypto.randomUUID();
-    await db.run(
+    await dbRun(
       "INSERT INTO orders (id, user_id, razorpay_order_id, amount_paise, status, type) VALUES (?, ?, ?, ?, ?, ?)",
       [orderId, user.id, razorpayOrder.id, amountPaise, "created", orderType]
     );
 
     for (let noteId of newNotes) {
-      await db.run(
+      await dbRun(
         "INSERT INTO order_items (id, order_id, note_id, bundle_id, price_paise) VALUES (?, ?, ?, ?, ?)",
         [crypto.randomUUID(), orderId, noteId, body.bundleId || null, Math.round(amountPaise / newNotes.length)]
       );

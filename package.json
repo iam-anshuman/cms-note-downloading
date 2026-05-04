@@ -1,19 +1,28 @@
 {
-  "name": "cms",
+  "name": "cms-note-downloading",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:turbo": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "seed": "node scripts/seed.js",
-    "seed-test": "node scripts/seed-test-user.js"
+    "seed-test": "node scripts/seed-test-user.js",
+    "db:push": "npx drizzle-kit push",
+    "db:generate": "npx drizzle-kit generate",
+    "db:studio": "npx drizzle-kit studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1041.0",
+    "@aws-sdk/lib-storage": "^3.1041.0",
+    "@aws-sdk/s3-request-presigner": "^3.1041.0",
+    "@libsql/client": "^0.17.3",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.9.0",
     "cookie": "^1.1.1",
+    "drizzle-orm": "^0.45.2",
     "jose": "^6.2.2",
     "jsonwebtoken": "^9.0.3",
     "next": "16.2.4",
@@ -28,8 +37,10 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "wrangler": "^4.87.0"
   }
 }

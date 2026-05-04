@@ -1,5 +1,8 @@
 {
   "github": {
     "enabled": false
-  }
+  },
+  "framework": null,
+  "buildCommand": "echo 'Deployment disabled' && exit 0",
+  "outputDirectory": "."
 }

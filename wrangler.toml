@@ -5,7 +5,7 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "cms-db"
-database_id = "your-d1-database-id-here"
+database_id = "d5284d05-d793-4724-8bd4-7324daed21ba"
 
 # R2 Bucket
 [[r2_buckets]]

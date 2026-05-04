@@ -24,12 +24,33 @@ function createRemoteClient() {
   });
 }
 
+function createD1Client(d1Binding: any) {
+  return createClient({
+    url: d1Binding.url,
+    authToken: d1Binding.token,
+  });
+}
+
 export function getDb(env?: any) {
   if (client && db) return { client: db, raw: client };
 
-  if (isVercel || libsqlUrl) {
+  // Skip remote during build - use local SQLite
+  const isBuildTime = process.env.NEXT_PHASE === 'build' || process.env.NEXT_PHASE === 'phase-production-build';
+  if (isBuildTime) {
+    client = createLocalClient();
+    db = drizzle(client, { schema });
+    return { client: db, raw: client };
+  }
+
+  // Check for Vercel D1 binding (env.DB) - used in Vercel production
+  if (env?.DB) {
+    client = createD1Client(env.DB);
+  } 
+  // Use remote D1 only in production
+  else if (isVercel && libsqlUrl) {
     client = createRemoteClient();
-  } else {
+  }
+  else {
     client = createLocalClient();
   }
   db = drizzle(client, { schema });

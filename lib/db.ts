@@ -7,27 +7,28 @@ let db: Awaited<ReturnType<typeof drizzle<typeof schema>>> | null = null;
 let client: Client | null = null;
 let initialized = false;
 
+const isVercel = !!process.env.VERCEL;
+const libsqlUrl = process.env.LIBSQL_URL;
+const libsqlAuthToken = process.env.LIBSQL_AUTH_TOKEN;
+
 function createLocalClient() {
   return createClient({
     url: "file:./data/cms.db",
   });
 }
 
-function createD1Client(env: any) {
-  if (env?.DB) {
-    return createClient({
-      url: env.DB.url,
-      authToken: env.DB.token,
-    });
-  }
-  return createLocalClient();
+function createRemoteClient() {
+  return createClient({
+    url: libsqlUrl || process.env.DATABASE_URL || "file:./data/cms.db",
+    authToken: libsqlAuthToken || process.env.DATABASE_AUTH_TOKEN,
+  });
 }
 
 export function getDb(env?: any) {
   if (client && db) return { client: db, raw: client };
 
-  if (env?.DB) {
-    client = createD1Client(env);
+  if (isVercel || libsqlUrl) {
+    client = createRemoteClient();
   } else {
     client = createLocalClient();
   }
@@ -45,6 +46,12 @@ export type DB = Awaited<ReturnType<typeof getDb>>;
 async function initDb() {
   if (initialized) return;
   
+  // Skip table creation in production (Vercel) - DB should be pre-created
+  if (isVercel || libsqlUrl) {
+    initialized = true;
+    return;
+  }
+
   const { raw } = getDb();
   
   await raw.execute(`

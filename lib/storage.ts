@@ -19,7 +19,7 @@ export async function uploadFile(
 
   const subDir = noteId || "general";
   const uploadDir = path.join(UPLOAD_DIR, subDir);
-  
+
   if (!fs.existsSync(uploadDir)) {
     await mkdir(uploadDir, { recursive: true });
   }

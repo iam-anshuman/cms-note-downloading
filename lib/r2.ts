@@ -55,8 +55,8 @@ export async function uploadToR2(
 
   await upload.done();
 
-  const url = R2_PUBLIC_URL 
-    ? `${R2_PUBLIC_URL}/${key}` 
+  const url = R2_PUBLIC_URL
+    ? `${R2_PUBLIC_URL}/${key}`
     : `https://${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`;
 
   return { url, key };
@@ -88,7 +88,7 @@ export async function getObject(key: string): Promise<{ body: any; contentType: 
   });
 
   const response = await client.send(command);
-  
+
   return {
     body: response.Body,
     contentType: response.ContentType || "application/octet-stream",

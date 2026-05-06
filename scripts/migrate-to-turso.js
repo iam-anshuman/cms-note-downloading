@@ -1,68 +1,93 @@
-import { drizzle } from "drizzle-orm/libsql";
-import { createClient, type Client } from "@libsql/client";
-import * as schema from "./db/schema";
-import bcrypt from "bcryptjs";
+const { createClient } = require("@libsql/client");
+const fs = require("fs");
+const path = require("path");
 
-let db: Awaited<ReturnType<typeof drizzle<typeof schema>>> | null = null;
-let client: Client | null = null;
-let initialized = false;
+const LOCAL_DB_PATH = path.join(process.cwd(), "data", "cms.db");
+const TURSO_URL = process.env.TURSO_DATABASE_URL;
+const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN;
 
-const isLocal = !process.env.VERCEL && process.env.NODE_ENV !== "production";
-const isBuildTime = process.env.NEXT_PHASE === "build" || process.env.NEXT_PHASE === "phase-production-build";
-
-function createLocalClient() {
-  return createClient({
-    url: "file:./data/cms.db",
-  });
+if (!TURSO_URL || !TURSO_AUTH_TOKEN) {
+  console.error("Error: TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set in .env.local");
+  process.exit(1);
 }
 
-function createTursoClient() {
-  const url = process.env.TURSO_DATABASE_URL;
-  const authToken = process.env.TURSO_AUTH_TOKEN;
-  
-  if (!url || !authToken) {
-    throw new Error("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set for production");
-  }
-  
-  return createClient({
-    url,
-    authToken,
-  });
+if (!fs.existsSync(LOCAL_DB_PATH)) {
+  console.error("Error: Local database not found at", LOCAL_DB_PATH);
+  process.exit(1);
 }
 
-export function getDb() {
-  if (client && db) return { client: db, raw: client };
+const localClient = createClient({
+  url: `file:${LOCAL_DB_PATH}`,
+});
 
-  if (isBuildTime) {
-    client = createLocalClient();
-    db = drizzle(client, { schema });
-    return { client: db, raw: client };
-  }
+const tursoClient = createClient({
+  url: TURSO_URL,
+  authToken: TURSO_AUTH_TOKEN,
+});
 
-  if (isLocal) {
-    client = createLocalClient();
-  } else {
-    client = createTursoClient();
-  }
+const tables = [
+  "users",
+  "notes",
+  "bundles",
+  "bundle_notes",
+  "orders",
+  "order_items",
+  "user_access",
+  "cart_items",
+];
 
-  db = drizzle(client, { schema });
-  return { client: db, raw: client };
+async function getTableColumns(client, table) {
+  const result = await client.execute(`PRAGMA table_info(${table})`);
+  return result.rows;
 }
 
-export type DB = Awaited<ReturnType<typeof getDb>>;
+async function migrateTable(table) {
+  console.log(`\nMigrating table: ${table}`);
 
-async function initDb() {
-  if (initialized) return;
+  // Get column info
+  const columns = await getTableColumns(localClient, table);
+  const columnNames = columns.map((c) => c.name);
 
-  if (!isLocal) {
-    // For Turso production, assume schema is already migrated
-    initialized = true;
+  // Read all data from local
+  const { rows } = await localClient.execute(`SELECT * FROM ${table}`);
+  console.log(`  Found ${rows.length} rows`);
+
+  if (rows.length === 0) {
+    console.log(`  Skipping (empty)`);
     return;
   }
 
-  const { raw } = getDb();
+  // Truncate Turso table first (optional - comment out if you want to append)
+  try {
+    await tursoClient.execute(`DELETE FROM ${table}`);
+    console.log(`  Cleared existing data in Turso`);
+  } catch (err) {
+    // Table might not exist yet
+    console.log(`  Note: Could not clear table (may not exist yet)`);
+  }
 
-  await raw.execute(`
+  // Insert rows
+  const placeholders = columnNames.map(() => "?").join(", ");
+  const insertSql = `INSERT INTO ${table} (${columnNames.join(", ")}) VALUES (${placeholders})`;
+
+  let inserted = 0;
+  for (const row of rows) {
+    const values = columnNames.map((col) => row[col] ?? null);
+    try {
+      await tursoClient.execute({ sql: insertSql, args: values });
+      inserted++;
+    } catch (err) {
+      console.error(`  Error inserting row into ${table}:`, err.message);
+      console.error(`  Row:`, row);
+    }
+  }
+
+  console.log(`  Inserted ${inserted}/${rows.length} rows`);
+}
+
+async function createSchema() {
+  console.log("Creating schema in Turso...");
+  const schema = `
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
@@ -161,52 +186,50 @@ async function initDb() {
       FOREIGN KEY(note_id) REFERENCES notes(id) ON DELETE CASCADE,
       UNIQUE(user_id, note_id)
     );
-  `);
+  `;
 
-  const userCount = await raw.execute("SELECT COUNT(*) as count FROM users");
-  if (userCount.rows[0].count === 0) {
-    const adminEmail = process.env.ADMIN_EMAILS || "admin@academy.com";
-    const adminPassword = process.env.ADMIN_PASSWORD || "Admin@1234";
-    const hash = bcrypt.hashSync(adminPassword, 10);
-    const id = crypto.randomUUID();
+  const statements = schema
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
 
-    await raw.execute({
-      sql: "INSERT INTO users (id, email, password_hash, full_name, role) VALUES (?, ?, ?, ?, ?)",
-      args: [id, adminEmail, hash, "Admin User", "admin"]
-    });
-    console.log(`[DB] Auto-seeded default admin user: ${adminEmail}`);
+  for (const stmt of statements) {
+    try {
+      await tursoClient.execute(stmt);
+    } catch (err) {
+      // Ignore "already exists" errors
+      if (!err.message.includes("already exists")) {
+        console.error(`Schema error:`, err.message);
+      }
+    }
   }
-
-  initialized = true;
+  console.log("Schema created/verified.");
 }
 
-export async function dbAll(sql: string, params: (string | number | null)[] = []) {
+async function main() {
+  console.log("=== Turso Migration Tool ===");
+  console.log("Local DB:", LOCAL_DB_PATH);
+  console.log("Turso URL:", TURSO_URL);
+
   try {
-    await initDb();
-    const { raw } = getDb();
-    const result = await raw.execute({ sql, args: params });
-    return result.rows;
-  } catch (err: any) {
-    console.error("[DB] dbAll error:", err.message || err);
-    if (err.cause) console.error("[DB] Cause:", err.cause);
-    throw err;
+    // Create schema first
+    await createSchema();
+
+    // Migrate tables in order (respecting foreign keys)
+    await migrateTable("users");
+    await migrateTable("notes");
+    await migrateTable("bundles");
+    await migrateTable("bundle_notes");
+    await migrateTable("orders");
+    await migrateTable("order_items");
+    await migrateTable("user_access");
+    await migrateTable("cart_items");
+
+    console.log("\n=== Migration Complete ===");
+  } catch (err) {
+    console.error("Migration failed:", err);
+    process.exit(1);
   }
 }
 
-export async function dbGet(sql: string, params: (string | number | null)[] = []) {
-  await initDb();
-  const rows = await dbAll(sql, params);
-  return rows[0] || null;
-}
-
-export async function dbRun(sql: string, params: (string | number | null)[] = []) {
-  await initDb();
-  const { raw } = getDb();
-  return await raw.execute({ sql, args: params });
-}
-
-export async function dbExec(sql: string) {
-  await initDb();
-  const { raw } = getDb();
-  return await raw.execute(sql);
-}
+main();

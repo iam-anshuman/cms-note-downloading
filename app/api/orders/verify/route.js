@@ -1,6 +1,6 @@
 import { dbAll, dbGet, dbRun } from "@/lib/db";
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { verifyRazorpaySignature } from "@/lib/razorpay";
 
 export async function POST(request) {
   try {
@@ -14,12 +14,14 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-      .digest("hex");
+    const isValid = await verifyRazorpaySignature(
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+      process.env.RAZORPAY_KEY_SECRET
+    );
 
-    if (expectedSignature !== razorpaySignature) {
+    if (!isValid) {
       return NextResponse.json({ error: "Payment verification failed" }, { status: 400 });
     }
 
@@ -46,7 +48,7 @@ export async function POST(request) {
     for (let note of notes) {
       const expiresAt = new Date();
       expiresAt.setMonth(expiresAt.getMonth() + (note.access_duration_months || 6));
-      
+
       const existingAccess = await dbGet(
         "SELECT id, expires_at FROM user_access WHERE user_id = ? AND note_id = ?",
         [order.user_id, note.id]
@@ -55,7 +57,7 @@ export async function POST(request) {
       if (existingAccess) {
         const currentExpiry = new Date(existingAccess.expires_at);
         const newExpiry = currentExpiry > new Date() ? new Date(currentExpiry.setMonth(currentExpiry.getMonth() + (note.access_duration_months || 6))) : expiresAt;
-        
+
         await dbRun(
           "UPDATE user_access SET expires_at = ? WHERE id = ?",
           [newExpiry.toISOString(), existingAccess.id]
@@ -73,6 +75,7 @@ export async function POST(request) {
       accessGranted: noteIds.length,
     });
   } catch (err) {
+    console.error("[verify]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

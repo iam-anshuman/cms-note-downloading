@@ -1,14 +1,7 @@
 import { dbAll, dbRun } from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-
-function getRazorpay() {
-  const Razorpay = require("razorpay");
-  return new Razorpay({
-    key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  });
-}
+import { createRazorpayOrder } from "@/lib/razorpay";
 
 export async function POST(request) {
   try {
@@ -47,7 +40,7 @@ export async function POST(request) {
 
     const amountPaise = newNotes.reduce((sum, n) => sum + (n.price_paise || 0), 0);
 
-    const razorpayOrder = await getRazorpay().orders.create({
+    const razorpayOrder = await createRazorpayOrder({
       amount: amountPaise,
       currency: "INR",
       receipt: `cart_${Date.now()}`,

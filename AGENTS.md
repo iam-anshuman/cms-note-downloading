@@ -8,7 +8,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Tech Stack
 - **Frontend**: Next.js 16.2.4 with React 19, Tailwind CSS 4
-- **Database**: Drizzle ORM with SQLite (local) / Cloudflare D1 (production)
+- **Database**: Drizzle ORM with SQLite (local) / Turso (production)
 - **Storage**: Local filesystem (dev) / Cloudflare R2 (production)
 - **Auth**: JWT in HTTP-only cookies
 - **Payments**: Razorpay
@@ -29,10 +29,16 @@ RESEND_API_KEY=re_xxx
 ### Required for Vercel Production
 ```
 JWT_SECRET=<generate-secure-secret>
+ADMIN_EMAILS=admin@academy.com
+ADMIN_PASSWORD=<secure-admin-password>
 NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
 NEXT_PUBLIC_RAZORPAY_KEY_ID=<from-razorpay-dashboard>
 RAZORPAY_KEY_SECRET=<from-razorpay-dashboard>
 RESEND_API_KEY=<from-resend-dashboard>
+
+# Turso Database (for production database)
+TURSO_DATABASE_URL=libsql://your-db-name.turso.io
+TURSO_AUTH_TOKEN=<from-turso-dashboard>
 
 # Cloudflare R2 (for file storage)
 R2_ACCOUNT_ID=<from-cloudflare-dashboard>
@@ -48,15 +54,12 @@ R2_PUBLIC_URL=https://cdn.yourdomain.com  # optional, for custom domain
 1. Database is automatically created at `data/cms.db`
 2. Admin user is auto-seeded on first run (admin@academy.com / Admin@1234)
 
-### D1 Database (Production)
-```bash
-# Create D1 database
-npx wrangler d1 create cms-db
-
-# Get database ID and update wrangler.toml
-# Then push schema
-npm run db:push
-```
+### Turso Database (Production)
+1. Create a free Turso database at https://turso.tech
+2. Copy the database URL (`libsql://your-db-name.turso.io`)
+3. Generate an auth token from the Turso dashboard
+4. Add `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` to Vercel env vars
+5. Push schema: `npm run db:push`
 
 ## Deployment to Vercel
 
@@ -89,6 +92,6 @@ New uploads go to R2; old local files automatically fallback to local storage.
 ```bash
 npm run dev          # Start development server
 npm run build        # Build for production
-npm run db:push      # Push schema to D1
+npm run db:push      # Push schema to Turso
 npm run db:studio   # Open Drizzle Studio
 ```

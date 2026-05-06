@@ -28,20 +28,20 @@
 
 ### 1. Environment Variables (Required)
 ```
-JWT_SECRET=cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e
+JWT_SECRET=<generate-a-secure-random-string>
 NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
-NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_Sjm2tFsV0hVlTv
-RAZORPAY_KEY_SECRET=HU2DvX6X3p0o5zSB5IzrT9Jt
-RESEND_API_KEY=re_Dnr2xphE_6mnKdK6i8rhWQUP9YrU4m3Gi
+NEXT_PUBLIC_RAZORPAY_KEY_ID=<from-razorpay-dashboard>
+RAZORPAY_KEY_SECRET=<from-razorpay-dashboard>
+RESEND_API_KEY=<from-resend-dashboard>
 ```
 
 ### 2. R2 Storage (Optional - for production)
 ```
-R2_ACCOUNT_ID=10e5da621561f67af8262edc4e9a86a8
-R2_ACCESS_KEY_ID=7382f3eac683dba28fd1d640a7148a6c
-R2_SECRET_ACCESS_KEY=cd91660b6dd335dd4d78a7391b70e1d10246da815e6b0653dc5c78453340f290
+R2_ACCOUNT_ID=<from-cloudflare-dashboard>
+R2_ACCESS_KEY_ID=<from-r2-api-tokens>
+R2_SECRET_ACCESS_KEY=<from-r2-api-tokens>
 R2_BUCKET_NAME=cms-notes-files
-R2_PUBLIC_URL=https://10e5da621561f67af8262edc4e9a86a8.r2.cloudflarestorage.com
+R2_PUBLIC_URL=https://your-account-id.r2.cloudflarestorage.com
 ```
 
 ### 3. Deploy

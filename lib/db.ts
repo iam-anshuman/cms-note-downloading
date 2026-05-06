@@ -194,15 +194,27 @@ export async function dbAll(sql: string, params: (string | number | null)[] = []
 }
 
 export async function dbGet(sql: string, params: (string | number | null)[] = []) {
-  await initDb();
-  const rows = await dbAll(sql, params);
-  return rows[0] || null;
+  try {
+    await initDb();
+    const rows = await dbAll(sql, params);
+    return rows[0] || null;
+  } catch (err: any) {
+    console.error("[DB] dbGet error:", err.message || err);
+    if (err.cause) console.error("[DB] Cause:", err.cause);
+    throw err;
+  }
 }
 
 export async function dbRun(sql: string, params: (string | number | null)[] = []) {
-  await initDb();
-  const { raw } = getDb();
-  return await raw.execute({ sql, args: params });
+  try {
+    await initDb();
+    const { raw } = getDb();
+    return await raw.execute({ sql, args: params });
+  } catch (err: any) {
+    console.error("[DB] dbRun error:", err.message || err);
+    if (err.cause) console.error("[DB] Cause:", err.cause);
+    throw err;
+  }
 }
 
 export async function dbExec(sql: string) {

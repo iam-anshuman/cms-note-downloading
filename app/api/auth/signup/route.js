@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 
 export async function POST(request) {
   try {
-    const { email, password } = await request.json();
+    const { email, password, fullName } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -27,8 +27,8 @@ export async function POST(request) {
     const role = isAdmin ? 'admin' : 'customer';
 
     await dbRun(
-      "INSERT INTO users (id, email, password_hash, role) VALUES (?, ?, ?, ?)",
-      [id, email, hash, role]
+      "INSERT INTO users (id, email, password_hash, role, full_name) VALUES (?, ?, ?, ?, ?)",
+      [id, email, hash, role, fullName || '']
     );
 
     const token = await signToken({ userId: id, role });
@@ -41,13 +41,14 @@ export async function POST(request) {
       path: "/",
     });
 
-    const user = { id, email, role, full_name: '', avatar_url: null };
+    const user = { id, email, role, full_name: fullName || '', avatar_url: null };
 
     return NextResponse.json({
       message: "Signed up successfully",
       user,
     });
   } catch (err) {
+    console.error("[SIGNUP] Error:", err);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

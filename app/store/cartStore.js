@@ -36,7 +36,7 @@ export const useCartStore = create((set, get) => ({
 
   /**
    * Called after a successful login.
-   * Merges guest cart items into the DB then fetches canonical list.
+   * Merges guest cart items into th20e DB then fetches canonical list.
    */
   syncOnLogin: async () => {
     set({ syncing: true });

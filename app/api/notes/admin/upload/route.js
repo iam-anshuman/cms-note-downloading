@@ -31,7 +31,9 @@ export async function POST(request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    console.log(`[upload] File uploaded: ${fileName} (noteId: ${noteId || "none"})`);
     const { path, url } = await uploadFile(buffer, fileName, file.type, noteId || undefined);
+    console.log(`[upload] File stored at: ${path} (URL: ${url})`);
 
     return NextResponse.json({
       path: path,

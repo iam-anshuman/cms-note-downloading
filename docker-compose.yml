@@ -7,7 +7,6 @@ services:
       - "3000:3000"
     volumes:
       - ./data:/app/data
-      - ./public/uploads:/app/public/uploads
     environment:
       - NODE_ENV=production
       - JWT_SECRET=change_this_to_a_secure_random_string

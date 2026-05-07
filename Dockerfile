@@ -44,7 +44,6 @@ COPY --from=builder /app/public ./public
 # Create required directories
 RUN mkdir .next && chown nextjs:nodejs .next
 RUN mkdir data && chown nextjs:nodejs data
-RUN mkdir -p public/uploads && chown -R nextjs:nodejs public/uploads
 
 # Copy standalone build
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

@@ -1,9 +1,4 @@
-import { writeFile, mkdir, unlink } from "fs/promises";
-import path from "path";
-import fs from "fs";
 import * as r2 from "./r2";
-
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 
 export async function uploadFile(
   buffer: Buffer,
@@ -11,71 +6,39 @@ export async function uploadFile(
   contentType: string,
   noteId?: string
 ): Promise<{ path: string; url: string }> {
-  if (r2.isR2Configured()) {
-    const folder = noteId || "general";
-    const { url } = await r2.uploadToR2(buffer, fileName, contentType, folder);
-    return { path: `/${folder}/${fileName}`, url };
-  }
-
-  const subDir = noteId || "general";
-  const uploadDir = path.join(UPLOAD_DIR, subDir);
-
-  if (!fs.existsSync(uploadDir)) {
-    await mkdir(uploadDir, { recursive: true });
-  }
-
-  const filePath = path.join(uploadDir, fileName);
-  await writeFile(filePath, buffer);
-
-  const relativePath = `/${subDir}/${fileName}`;
-  return { path: relativePath, url: relativePath };
+  const folder = noteId || "general";
+  const { url } = await r2.uploadToR2(buffer, fileName, contentType, folder);
+  console.log(`[storage] Uploaded to R2: ${url}`);
+  return { path: `/${folder}/${fileName}`, url };
 }
 
 export async function deleteFile(filePath: string): Promise<void> {
-  if (r2.isR2Configured()) {
-    const key = filePath.replace(/^\//, "");
-    await r2.deleteFromR2(key);
-    return;
-  }
-
-  const fullPath = path.join(process.cwd(), "public", filePath);
-  if (fs.existsSync(fullPath)) {
-    await unlink(fullPath);
-  }
+  const key = filePath.replace(/^\//, "");
+  await r2.deleteFromR2(key);
 }
 
 export async function getFileBuffer(filePath: string): Promise<Buffer | null> {
-  if (r2.isR2Configured()) {
-    try {
-      const key = filePath.replace(/^\//, "");
-      const { body } = await r2.getObject(key);
-      const chunks = [];
-      for await (const chunk of body) {
-        chunks.push(chunk);
-      }
-      return Buffer.concat(chunks);
-    } catch (err: any) {
-      if (err.name === "NoSuchKey" || err.Code === "NoSuchKey") {
-        console.log(`[storage] File not in R2, trying local: ${filePath}`);
-      } else {
-        console.error(`[storage] R2 error:`, err.message);
-      }
+  try {
+    const key = filePath.replace(/^\//, "");
+    const { body } = await r2.getObject(key);
+    const chunks = [];
+    for await (const chunk of body) {
+      chunks.push(chunk);
     }
-  }
-
-  const fullPath = path.join(process.cwd(), "public", filePath);
-  if (!fs.existsSync(fullPath)) {
+    return Buffer.concat(chunks);
+  } catch (err: any) {
+    if (err.name === "NoSuchKey" || err.Code === "NoSuchKey") {
+      console.log(`[storage] File not found in R2: ${filePath}`);
+    } else {
+      console.error(`[storage] R2 error:`, err.message);
+    }
     return null;
   }
-  return fs.readFileSync(fullPath);
 }
 
-export function fileExists(filePath: string): boolean {
-  if (r2.isR2Configured()) {
-    return true;
-  }
-  const fullPath = path.join(process.cwd(), "public", filePath);
-  return fs.existsSync(fullPath);
+export async function fileExists(filePath: string): Promise<boolean> {
+  const key = filePath.replace(/^\//, "");
+  return r2.fileExists(key);
 }
 
 export function getContentType(fileName: string): string {

@@ -61,8 +61,8 @@ export default function UploadPage() {
       return;
     }
     
-    if (selectedFile.size > 50 * 1024 * 1024) {
-      setErrorMsg("File size exceeds 50MB limit.");
+    if (selectedFile.size > 1024 * 1024 * 1024) {
+      setErrorMsg("File size exceeds 1GB limit.");
       return;
     }
     
@@ -510,7 +510,7 @@ export default function UploadPage() {
                     {file ? file.name : "Drag manuscript here"}
                   </h4>
                   <p className="font-body text-on-surface-variant text-xs mt-1 text-center">
-                    {file ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : "PDF, PNG, JPG (Max 50MB)"}
+                    {file ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : "PDF, PNG, JPG (Max 1GB)"}
                   </p>
                   <button className="mt-4 bg-surface-container-lowest text-on-surface-variant px-6 py-1.5 rounded-lg font-label text-[10px] uppercase tracking-widest hover:text-primary hover:shadow-md transition-all ghost-border" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
                     {file ? "Change File" : "Select File"}

@@ -1,5 +1,4 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
@@ -21,6 +20,7 @@ function getClient() {
         accessKeyId: R2_ACCESS_KEY_ID!,
         secretAccessKey: R2_SECRET_ACCESS_KEY!,
       },
+      requestChecksumCalculation: "WHEN_REQUIRED",
     });
   }
   return s3Client;
@@ -43,17 +43,14 @@ export async function uploadToR2(
 
   const key = `${folder}/${fileName}`;
 
-  const upload = new Upload({
-    client,
-    params: {
-      Bucket: R2_BUCKET_NAME,
-      Key: key,
-      Body: fileBuffer,
-      ContentType: contentType,
-    },
+  const command = new PutObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: key,
+    Body: fileBuffer,
+    ContentType: contentType,
   });
 
-  await upload.done();
+  await client.send(command);
 
   const url = R2_PUBLIC_URL
     ? `${R2_PUBLIC_URL}/${key}`
@@ -88,7 +85,7 @@ export async function getObject(key: string): Promise<{ body: any; contentType: 
   });
 
   const response = await client.send(command);
-
+  console.log("response from R2 getObject:", response);
   return {
     body: response.Body,
     contentType: response.ContentType || "application/octet-stream",

@@ -27,13 +27,23 @@ export async function uploadFile(
   const filePath = path.join(uploadDir, fileName);
   await writeFile(filePath, buffer);
 
-  const relativePath = `/${subDir}/${fileName}`;
+  const relativePath = `/uploads/${subDir}/${fileName}`;
   return { path: relativePath, url: relativePath };
 }
 
 export async function deleteFile(filePath: string): Promise<void> {
+  if (filePath.startsWith("/uploads/")) {
+    const fullPath = path.join(process.cwd(), "public", filePath);
+    if (fs.existsSync(fullPath)) {
+      await unlink(fullPath);
+    }
+    return;
+  }
+
   if (r2.isR2Configured()) {
-    const key = filePath.replace(/^\//, "");
+    const key = filePath.startsWith("http")
+      ? new URL(filePath).pathname.replace(/^\//, "")
+      : filePath.replace(/^\//, "");
     await r2.deleteFromR2(key);
     return;
   }
@@ -44,7 +54,15 @@ export async function deleteFile(filePath: string): Promise<void> {
   }
 }
 
-export async function getFileBuffer(filePath: string): Promise<Buffer | null> {
+export async function getFileBuffer(filePath: string): Promise<Buffer | null | undefined> {
+  if (filePath.startsWith("/uploads/")) {
+    const fullPath = path.join(process.cwd(), "public", filePath);
+    if (fs.existsSync(fullPath)) {
+      return fs.readFileSync(fullPath);
+    }
+    return null;
+  }
+
   if (r2.isR2Configured()) {
     try {
       const key = filePath.replace(/^\//, "");
@@ -62,12 +80,10 @@ export async function getFileBuffer(filePath: string): Promise<Buffer | null> {
       }
     }
   }
-
   const fullPath = path.join(process.cwd(), "public", filePath);
   if (!fs.existsSync(fullPath)) {
     return null;
   }
-  return fs.readFileSync(fullPath);
 }
 
 export function fileExists(filePath: string): boolean {

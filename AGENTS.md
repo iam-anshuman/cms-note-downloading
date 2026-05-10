@@ -8,7 +8,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Tech Stack
 - **Frontend**: Next.js 16.2.4 with React 19, Tailwind CSS 4
-- **Database**: Drizzle ORM with SQLite (local) / Turso (production)
+- **Database**: Drizzle ORM with Turso (local dev + production) / SQLite (fallback)
 - **Storage**: Local filesystem (dev) / Cloudflare R2 (production)
 - **Auth**: JWT in HTTP-only cookies
 - **Payments**: Razorpay
@@ -24,6 +24,10 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxx
 RAZORPAY_KEY_SECRET=xxx
 RESEND_API_KEY=re_xxx
+
+# Turso Dev Database (local development)
+TURSO_DEV_DATABASE_URL=libsql://your-dev-db-name.turso.io
+TURSO_AUTH_TOKEN=<from-turso-dashboard>
 ```
 
 ### Required for Vercel Production
@@ -36,7 +40,7 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=<from-razorpay-dashboard>
 RAZORPAY_KEY_SECRET=<from-razorpay-dashboard>
 RESEND_API_KEY=<from-resend-dashboard>
 
-# Turso Database (for production database)
+# Turso Database (for production)
 TURSO_DATABASE_URL=libsql://your-db-name.turso.io
 TURSO_AUTH_TOKEN=<from-turso-dashboard>
 
@@ -50,16 +54,28 @@ R2_PUBLIC_URL=https://cdn.yourdomain.com  # optional, for custom domain
 
 ## Database Setup
 
-### Local Development
-1. Database is automatically created at `data/cms.db`
-2. Admin user is auto-seeded on first run (admin@academy.com / Admin@1234)
+### Turso Database (Local Development + Production)
+The app uses Turso for both local development and production. Local dev uses a separate dev database to keep data isolated.
 
-### Turso Database (Production)
-1. Create a free Turso database at https://turso.tech
-2. Copy the database URL (`libsql://your-db-name.turso.io`)
+1. Create a free Turso account at https://turso.tech
+2. Create TWO databases:
+   - **Dev DB**: `libsql://your-dev-db-name.turso.io` (for local development)
+   - **Prod DB**: `libsql://your-db-name.turso.io` (for production)
 3. Generate an auth token from the Turso dashboard
-4. Add `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` to Vercel env vars
-5. Push schema: `npm run db:push`
+4. Add environment variables:
+   - **Local**: Add `TURSO_DEV_DATABASE_URL` and `TURSO_AUTH_TOKEN` to `.env.local`
+   - **Vercel**: Add `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` to Vercel env vars
+5. Push schema to each database:
+   ```bash
+   # Push to dev database (local)
+   npm run db:push
+
+   # Push to production database
+   TURSO_DATABASE_URL=libsql://your-db-name.turso.io npm run db:push
+   ```
+
+### SQLite Fallback (Optional)
+If `TURSO_DEV_DATABASE_URL` is not set, the app falls back to a local SQLite file at `data/cms.db`. Admin user is auto-seeded on first run for SQLite only.
 
 ## Deployment to Vercel
 
@@ -92,6 +108,6 @@ New uploads go to R2; old local files automatically fallback to local storage.
 ```bash
 npm run dev          # Start development server
 npm run build        # Build for production
-npm run db:push      # Push schema to Turso
+npm run db:push      # Push schema to Turso (uses TURSO_DEV_DATABASE_URL locally)
 npm run db:studio   # Open Drizzle Studio
 ```

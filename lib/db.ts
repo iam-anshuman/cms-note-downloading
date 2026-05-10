@@ -11,6 +11,17 @@ const isLocal = !process.env.VERCEL && process.env.NODE_ENV !== "production";
 const isBuildTime = process.env.NEXT_PHASE === "build" || process.env.NEXT_PHASE === "phase-production-build";
 
 function createLocalClient() {
+  const devUrl = process.env.TURSO_DEV_DATABASE_URL;
+  const authToken = process.env.TURSO_DEV_AUTH_TOKEN;
+
+  if (devUrl && authToken) {
+    console.log("[DB] Using Turso dev database:", devUrl);
+    return createClient({
+      url: devUrl,
+      authToken,
+    });
+  }
+
   return createClient({
     url: "file:./data/cms.db",
   });
@@ -54,8 +65,8 @@ export type DB = Awaited<ReturnType<typeof getDb>>;
 async function initDb() {
   if (initialized) return;
 
-  if (!isLocal) {
-    // For Turso production, assume schema is already migrated
+  // For Turso (dev or production), skip raw SQL init — use drizzle-kit push instead
+  if (process.env.TURSO_DEV_DATABASE_URL || !isLocal) {
     initialized = true;
     return;
   }

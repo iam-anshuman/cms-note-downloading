@@ -336,3 +336,9 @@ Caused by:
   Reload env: .env.local
   Reload env: .env.local
   Reload env: .env.local
+✓ Compiled in 820ms
+○ Compiling proxy ...
+○ Compiling /browse/[id] ...
+ GET /browse/ec27a7f0-380f-42f5-9ef8-91c4a1287e82 200 in 74s (next.js: 68s, application-code: 5.8s)
+ GET /browse/ec27a7f0-380f-42f5-9ef8-91c4a1287e82 200 in 2.5s (next.js: 263ms, application-code: 2.3s)
+[?25h

@@ -19,9 +19,9 @@ export async function POST(request) {
       );
     }
 
-    const maxSize = 50 * 1024 * 1024;
+    const maxSize = 1024 * 1024 * 1024;
     if (file.size > maxSize) {
-      return NextResponse.json({ error: "File size exceeds 50MB limit" }, { status: 400 });
+      return NextResponse.json({ error: "File size exceeds 1GB limit" }, { status: 400 });
     }
 
     const ext = file.name.split(".").pop();
@@ -33,8 +33,11 @@ export async function POST(request) {
 
     const { path, url } = await uploadFile(buffer, fileName, file.type, noteId || undefined);
 
+    const isImage = file.type.startsWith("image/");
+    const storedPath = isImage ? url : path;
+
     return NextResponse.json({
-      path: path,
+      path: storedPath,
       url: url,
       message: "File uploaded successfully",
     });
